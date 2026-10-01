@@ -99,38 +99,51 @@ def calculate_scores(sequence: str) -> dict:
     }
 
 # -----------------------------------------------------------------------------
-# 4. 사이드바 - 사용자 입력 및 가중치 설정
+# 4. 사이드바 - 양방향 연동 가중치 슬라이더 설정
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 조건 설정")
-
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
 
-# 초기 세션 설정
-if "mit_val" not in st.session_state:
-    st.session_state["mit_val"] = 60
+# 초기 세션 상태 설정 (기본값: 안전성 60, 효율성 40)
+if "mit_w" not in st.session_state:
+    st.session_state["mit_w"] = 60
+if "doench_w" not in st.session_state:
+    st.session_state["doench_w"] = 40
 
-# 슬라이더 값 변경 시 실행되는 콜백 함수
-def update_weights():
-    st.session_state["mit_val"] = st.session_state["mit_slider_key"]
+# 안전성 슬라이더를 움직였을 때 호출
+def on_mit_change():
+    st.session_state["doench_w"] = 100 - st.session_state["mit_w"]
 
+# 효율성 슬라이더를 움직였을 때 호출
+def on_doench_change():
+    st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
+
+# 1) 안전성 슬라이더
 mit_weight = st.sidebar.slider(
     "🛡️ 안전성 (MIT Score) 가중치 (%)",
     min_value=0,
     max_value=100,
-    value=st.session_state["mit_val"],
     step=1,
-    key="mit_slider_key",
-    on_change=update_weights
+    key="mit_w",
+    on_change=on_mit_change
 )
 
-doench_weight = 100 - mit_weight
+# 2) 효율성 슬라이더 (이제 이 버튼도 조작 가능합니다!)
+doench_weight = st.sidebar.slider(
+    "⚡ 효율성 (Doench Score) 가중치 (%)",
+    min_value=0,
+    max_value=100,
+    step=1,
+    key="doench_w",
+    on_change=on_doench_change
+)
 
-# 효율성 가중치 출력 (실시간 업데이트 반영)
-st.sidebar.info(f"⚡ **효율성 (Doench Score) 가중치: `{doench_weight}%`**")
-
+st.sidebar.caption(f"💡 가중치 합계: **{mit_weight + doench_weight}%** (안전성 {mit_weight}% : 효율성 {doench_weight}%)")
 st.sidebar.markdown("---")
 
-# 2) gRNA 후보 서열 입력 및 세션 관리
+# -----------------------------------------------------------------------------
+# 5. 사이드바 - gRNA 후보 서열 입력
+# -----------------------------------------------------------------------------
 st.sidebar.subheader("2. gRNA 후보 서열 입력")
 st.sidebar.caption("형식: `후보명, 20bp_DNA_서열` (한 줄에 하나씩)")
 
@@ -162,7 +175,7 @@ user_input = st.sidebar.text_area(
 )
 
 # -----------------------------------------------------------------------------
-# 5. 메인 화면 - 분석 실행 및 데이터 처리
+# 6. 메인 화면 - 분석 실행 및 데이터 처리
 # -----------------------------------------------------------------------------
 if user_input.strip():
     lines = user_input.strip().split("\n")
