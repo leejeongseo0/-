@@ -83,11 +83,11 @@ def calculate_scores(sequence: str) -> dict:
     c_count = seq.count('C')
     gc_content = ((g_count + c_count) / 20) * 100
     
-    # 2. Doench Score (효율성): GC 함량이 50%에 가까울수록 높음 (40~60% 최적)
+    # 2. Doench Score (효율성)
     gc_diff = abs(gc_content - 50)
     doench_score = max(10, 100 - (gc_diff * 2.8))
     
-    # 3. MIT Score (안전성): Seed 영역(3' 말단 10bp)의 GC 비율 모의 알고리즘
+    # 3. MIT Score (안전성)
     seed_region = seq[10:]
     seed_gc = ((seed_region.count('G') + seed_region.count('C')) / 10) * 100
     mit_score = max(15, 95 - abs(seed_gc - 50) * 1.5)
@@ -103,21 +103,29 @@ def calculate_scores(sequence: str) -> dict:
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 조건 설정")
 
-# 1) 가중치 슬라이더 (실시간 반응성 최적화)
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
+
+# 초기 세션 설정
+if "mit_val" not in st.session_state:
+    st.session_state["mit_val"] = 60
+
+# 슬라이더 값 변경 시 실행되는 콜백 함수
+def update_weights():
+    st.session_state["mit_val"] = st.session_state["mit_slider_key"]
 
 mit_weight = st.sidebar.slider(
     "🛡️ 안전성 (MIT Score) 가중치 (%)",
     min_value=0,
     max_value=100,
-    value=60,
-    step=1
+    value=st.session_state["mit_val"],
+    step=1,
+    key="mit_slider_key",
+    on_change=update_weights
 )
 
-# 안전성에 따라 실시간으로 변하는 효율성 가중치
 doench_weight = 100 - mit_weight
 
-# 가중치 안내 표시
+# 효율성 가중치 출력 (실시간 업데이트 반영)
 st.sidebar.info(f"⚡ **효율성 (Doench Score) 가중치: `{doench_weight}%`**")
 
 st.sidebar.markdown("---")
@@ -126,12 +134,10 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("2. gRNA 후보 서열 입력")
 st.sidebar.caption("형식: `후보명, 20bp_DNA_서열` (한 줄에 하나씩)")
 
-# 최초 실행 시 초기값 세팅 (HBB 기본 적용)
 if "grna_input_text_area" not in st.session_state:
     st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
     st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
 
-# 예시 데이터 무작위 변경 콜백 함수
 def change_random_example_data():
     gene_list = list(DATA_SAMPLES.keys())
     available_genes = [g for g in gene_list if g != st.session_state.get("current_gene_name")]
@@ -140,7 +146,6 @@ def change_random_example_data():
     st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
     st.session_state["current_gene_name"] = selected_gene
 
-# 무작위 유전자 데이터 불러오기 버튼
 st.sidebar.button(
     "🎲 다른 유전자 예시 데이터 불러오기", 
     use_container_width=True,
@@ -150,7 +155,6 @@ st.sidebar.button(
 if "current_gene_name" in st.session_state:
     st.sidebar.caption(f"📌 현재 선택된 타깃 유전자: **{st.session_state['current_gene_name']}**")
 
-# 텍스트 입력창 (세션 키 연결)
 user_input = st.sidebar.text_area(
     "gRNA 서열 목록",
     height=180,
@@ -182,8 +186,6 @@ if user_input.strip():
             continue
             
         scores = calculate_scores(seq)
-        
-        # 가중 종합 점수 계산 (실시간 효율성 가중치 적용)
         weighted_score = (scores["MIT_Score"] * (mit_weight / 100.0)) + (scores["Doench_Score"] * (doench_weight / 100.0))
         
         parsed_results.append({
@@ -195,7 +197,6 @@ if user_input.strip():
             "임상 종합 점수": round(weighted_score, 1)
         })
     
-    # 예외 상황 메시지 출력 (Part 4-3 대응)
     if error_logs:
         with st.expander("⚠ 입력 데이터 유효성 검사 경고 메시지", expanded=True):
             for err in error_logs:
@@ -207,14 +208,12 @@ if user_input.strip():
         
         top_candidate = df.iloc[0]
         
-        # TOP 1 추천 뱃지 출력
         st.success(
             f"🏆 **선택 가중치 (안전성 {mit_weight}% : 효율성 {doench_weight}%) 기준 최적 gRNA:** **{top_candidate['후보명']}** "
             f"(종합 점수: {top_candidate['임상 종합 점수']}점 | "
             f"안전성: {top_candidate['안전성 (MIT)']}점 / 효율성: {top_candidate['효율성 (Doench)']}점)"
         )
         
-        # 시각화 & 결과 표 탭 구성
         tab1, tab2 = st.tabs(["📊 2D 스크리닝 Map (시각화)", "📋 전체 결과 데이터"])
         
         with tab1:
@@ -242,7 +241,6 @@ if user_input.strip():
             st.subheader("상세 계산 결과")
             st.dataframe(df, use_container_width=True)
             
-            # CSV 다운로드 기능
             csv = df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
                 label="📥 스크리닝 결과 CSV 다운로드",
