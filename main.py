@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import random
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 기본 설정
@@ -18,7 +19,48 @@ st.markdown("""
 """)
 
 # -----------------------------------------------------------------------------
-# 2. 로직 및 계산 함수 정의
+# 2. 다양한 대표 유전자 gRNA 예시 데이터 세트 정의
+# -----------------------------------------------------------------------------
+DATA_SAMPLES = {
+    "HBB (겸상적혈구빈혈증 관련 유전자)": (
+        "HBB_1460_rev, GACACCAACTGTCAACTGAT\n"
+        "HBB_1542_fw, CCTTGCCCCACAGGGCAGTA\n"
+        "HBB_Exon1_A, CTTGCCCCACAGGGCAGTAA\n"
+        "HBB_Exon1_B, TGGTCTACCCTTGGACCCAG\n"
+        "HBB_Exon2_C, AGTCTGCCATCACTGCCCTG"
+    ),
+    "BRCA1 (유방암/난소암 관련 유전자)": (
+        "BRCA1_Exon2_1, GAGTAGTCAAGAGAAAGGAC\n"
+        "BRCA1_Exon11_A, GGAAGAAACCACCAAGGTCC\n"
+        "BRCA1_Exon11_B, ACAGCTACCCTTCCATCATA\n"
+        "BRCA1_Exon18_C, CTGATGTGCTTTGTTCTGGA\n"
+        "BRCA1_Exon24_D, TTACAGTTAGGTGAACAGCA"
+    ),
+    "TP53 (암 억제 유전자)": (
+        "TP53_Exon4_1, GTCCCCCTTGCCGTCCCAAG\n"
+        "TP53_Exon5_A, CCTCAACAAGATGTTTTGCC\n"
+        "TP53_Exon7_B, GCGCACTGACCACTGGATGG\n"
+        "TP53_Exon8_C, CCTATCCTGAGTAGTGGTAA\n"
+        "TP53_Exon10_D, CGTGTTTGTGCCTGTCCTGG"
+    ),
+    "CFTR (낭성섬유증 관련 유전자)": (
+        "CFTR_F508del_1, CACCATTAAAGAAAATATCA\n"
+        "CFTR_Exon3_A, ATTAAGCACAGTGGAAGAAT\n"
+        "CFTR_Exon10_B, TGATGAAGTAGAAGTAATAC\n"
+        "CFTR_Exon13_C, TTGCTCGTTGACCTCCACTC\n"
+        "CFTR_Exon20_D, AGAGTACTTGGAGAAGGCTC"
+    ),
+    "MYC (종양 유전자)": (
+        "MYC_Exon1_1, GCTGCTTAGACGCTGGATTT\n"
+        "MYC_Exon2_A, GTGCTCCATGAGGAGACACC\n"
+        "MYC_Exon2_B, CGACTCTGAGGAGGAACAAG\n"
+        "MYC_Exon3_C, TCCAGCAGAAGGTGATCCAG\n"
+        "MYC_Promoter_D, GCGACGCGCCCCAAGTTGGC"
+    )
+}
+
+# -----------------------------------------------------------------------------
+# 3. 로직 및 계산 함수 정의
 # -----------------------------------------------------------------------------
 
 def validate_grna(sequence: str) -> tuple[bool, str]:
@@ -33,7 +75,7 @@ def validate_grna(sequence: str) -> tuple[bool, str]:
     return True, "정상"
 
 def calculate_scores(sequence: str) -> dict:
-    """GC 함량 기반 Doench(효율성) 및 Seed 영역 기반 MIT(안전성) 모의 점수 계산"""
+    """GC 함량 기반 Doench(효율성) 및 Seed 영역 기반 MIT(안전성) 점수 계산"""
     seq = sequence.strip().upper()
     
     # 1. GC 함량 계산
@@ -57,52 +99,58 @@ def calculate_scores(sequence: str) -> dict:
     }
 
 # -----------------------------------------------------------------------------
-# 3. 사이드바 - 사용자 입력 및 가중치 설정
+# 4. 사이드바 - 사용자 입력 및 가중치 설정
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 조건 설정")
 
-# 1) 가중치 슬라이더
+# 1) 가중치 슬라이더 (안전성 & 효율성 동적 반응 처리)
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
+
 mit_weight = st.sidebar.slider(
     "🛡️ 안전성 (MIT Score) 가중치 (%)",
     min_value=0,
     max_value=100,
     value=60,
-    step=5
+    step=5,
+    key="mit_weight_slider"
 )
 doench_weight = 100 - mit_weight
-st.sidebar.caption(f"⚡ 효율성 (Doench Score) 가중치: **{doench_weight}%**")
+
+# 효율성 가중치 실시간 텍스트 및 상태 안내
+st.sidebar.markdown(f"⚡ **효율성 (Doench Score) 가중치: `{doench_weight}%`**")
 
 st.sidebar.markdown("---")
 
-# 2) gRNA 후보 서열 입력
+# 2) gRNA 후보 서열 입력 및 세션 관리
 st.sidebar.subheader("2. gRNA 후보 서열 입력")
 st.sidebar.caption("형식: `후보명, 20bp_DNA_서열` (한 줄에 하나씩)")
 
-example_data = (
-    "HBB_1460_rev, GACACCAACTGTCAACTGAT\n"
-    "HBB_1542_fw, CCTTGCCCCACAGGGCAGTA\n"
-    "HBB_Exon1_A, CTTGCCCCACAGGGCAGTAA\n"
-    "HBB_Exon1_B, TGGTCTACCCTTGGACCCAG\n"
-    "HBB_Exon2_C, AGTCTGCCATCACTGCCCTG"
-)
-
-# 세션 상태 초기화 (최초 실행 시)
+# 최초 실행 시 초기값 세팅 (HBB 기본 적용)
 if "grna_input_text_area" not in st.session_state:
-    st.session_state["grna_input_text_area"] = example_data
+    st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
+    st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
 
-# 버튼 클릭 시 실행될 콜백 함수 (on_click으로 완벽 동작)
-def load_example_data():
-    st.session_state["grna_input_text_area"] = example_data
+# 예시 데이터 랜덤 변경 콜백 함수
+def change_random_example_data():
+    gene_list = list(DATA_SAMPLES.keys())
+    # 현재 선택된 것과 다른 유전자 중에서 무작위 선택
+    available_genes = [g for g in gene_list if g != st.session_state.get("current_gene_name")]
+    selected_gene = random.choice(available_genes)
+    
+    st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
+    st.session_state["current_gene_name"] = selected_gene
 
-# 예시 데이터 불러오기 버튼
+# 버튼 누를 때마다 예시 데이터를 다른 유전자로 전환
 st.sidebar.button(
-    "🧬 실제 HBB 유전자 예시 데이터 불러오기", 
+    "🎲 다른 유전자 예시 데이터 불러오기", 
     use_container_width=True,
-    on_click=load_example_data
+    on_click=change_random_example_data
 )
 
-# 텍스트 입력창 (세션 상태의 키와 직접 연결)
+if "current_gene_name" in st.session_state:
+    st.sidebar.caption(f"📌 현재 선택된 타깃 유전자: **{st.session_state['current_gene_name']}**")
+
+# 텍스트 입력창 (세션 키 직접 연결)
 user_input = st.sidebar.text_area(
     "gRNA 서열 목록",
     height=180,
@@ -110,7 +158,7 @@ user_input = st.sidebar.text_area(
 )
 
 # -----------------------------------------------------------------------------
-# 4. 메인 화면 - 분석 실행 및 데이터 처리
+# 5. 메인 화면 - 분석 실행 및 데이터 처리
 # -----------------------------------------------------------------------------
 if user_input.strip():
     lines = user_input.strip().split("\n")
@@ -135,8 +183,8 @@ if user_input.strip():
             
         scores = calculate_scores(seq)
         
-        # 가중 종합 점수 산출
-        weighted_score = (scores["MIT_Score"] * (mit_weight / 100)) + (scores["Doench_Score"] * (doench_weight / 100))
+        # 안전성(MIT)과 효율성(Doench) 가중 종합 점수 계산
+        weighted_score = (scores["MIT_Score"] * (mit_weight / 100.0)) + (scores["Doench_Score"] * (doench_weight / 100.0))
         
         parsed_results.append({
             "후보명": name,
@@ -161,7 +209,7 @@ if user_input.strip():
         
         # TOP 1 추천 뱃지 출력
         st.success(
-            f"🏆 **설정한 가중치 기준 최적 gRNA 후보:** **{top_candidate['후보명']}** "
+            f"🏆 **선택 가중치 (안전성 {mit_weight}% : 효율성 {doench_weight}%) 기준 최적 gRNA:** **{top_candidate['후보명']}** "
             f"(종합 점수: {top_candidate['임상 종합 점수']}점 | "
             f"안전성: {top_candidate['안전성 (MIT)']}점 / 효율성: {top_candidate['효율성 (Doench)']}점)"
         )
@@ -194,7 +242,7 @@ if user_input.strip():
             st.subheader("상세 계산 결과")
             st.dataframe(df, use_container_width=True)
             
-            # CSV 다운로드 기능 (수행평가 제출 지원)
+            # CSV 다운로드 기능
             csv = df.to_csv(index=False).encode('utf-8-sig')
             st.download_button(
                 label="📥 스크리닝 결과 CSV 다운로드",
@@ -205,4 +253,4 @@ if user_input.strip():
     else:
         st.info("유효한 gRNA 서열이 없습니다. 올바른 20bp 서열을 입력해 주세요.")
 else:
-    st.info("사이드바에 gRNA 후보 서열을 입력해 주거나 [실제 HBB 유전자 예시 데이터 불러오기] 버튼을 눌러주세요.")
+    st.info("사이드바에 gRNA 후보 서열을 입력해 주거나 [🎲 다른 유전자 예시 데이터 불러오기] 버튼을 눌러주세요.")
