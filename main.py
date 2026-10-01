@@ -45,7 +45,7 @@ def calculate_scores(sequence: str) -> dict:
     gc_diff = abs(gc_content - 50)
     doench_score = max(10, 100 - (gc_diff * 2.8))
     
-    # 3. MIT Score (안전성): Seed 영역(3' 말단 10bp)의 GC 비율 및 반복 서열 감지 모의 알고리즘
+    # 3. MIT Score (안전성): Seed 영역(3' 말단 10bp)의 GC 비율 모의 알고리즘
     seed_region = seq[10:]
     seed_gc = ((seed_region.count('G') + seed_region.count('C')) / 10) * 100
     mit_score = max(15, 95 - abs(seed_gc - 50) * 1.5)
@@ -59,7 +59,7 @@ def calculate_scores(sequence: str) -> dict:
 # -----------------------------------------------------------------------------
 # 3. 사이드바 - 사용자 입력 및 가중치 설정
 # -----------------------------------------------------------------------------
-st.sidebar.header("⚙️️ 스크리닝 조건 설정")
+st.sidebar.header("⚙ 스크리닝 조건 설정")
 
 # 1) 가중치 슬라이더
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
@@ -75,7 +75,7 @@ st.sidebar.caption(f"⚡ 효율성 (Doench Score) 가중치: **{doench_weight}%*
 
 st.sidebar.markdown("---")
 
-# 2) gRNA 후보 서열 입력 (세션 상태 활용)
+# 2) gRNA 후보 서열 입력
 st.sidebar.subheader("2. gRNA 후보 서열 입력")
 st.sidebar.caption("형식: `후보명, 20bp_DNA_서열` (한 줄에 하나씩)")
 
@@ -87,23 +87,27 @@ example_data = (
     "HBB_Exon2_C, AGTCTGCCATCACTGCCCTG"
 )
 
-# 세션 상태 초기화 (최초 실행 시 기본 데이터 적용)
-if "grna_input_text" not in st.session_state:
-    st.session_state["grna_input_text"] = example_data
+# 세션 상태 초기화 (최초 실행 시)
+if "grna_input_text_area" not in st.session_state:
+    st.session_state["grna_input_text_area"] = example_data
+
+# 버튼 클릭 시 실행될 콜백 함수 (on_click으로 완벽 동작)
+def load_example_data():
+    st.session_state["grna_input_text_area"] = example_data
 
 # 예시 데이터 불러오기 버튼
-if st.sidebar.button("🧬 실제 HBB 유전자 예시 데이터 불러오기", use_container_width=True):
-    st.session_state["grna_input_text"] = example_data
-    st.rerun()
+st.sidebar.button(
+    "🧬 실제 HBB 유전자 예시 데이터 불러오기", 
+    use_container_width=True,
+    on_click=load_example_data
+)
 
-# 텍스트 입력창 (세션 상태 연동)
+# 텍스트 입력창 (세션 상태의 키와 직접 연결)
 user_input = st.sidebar.text_area(
     "gRNA 서열 목록",
-    value=st.session_state["grna_input_text"],
     height=180,
     key="grna_input_text_area"
 )
-st.session_state["grna_input_text"] = user_input
 
 # -----------------------------------------------------------------------------
 # 4. 메인 화면 - 분석 실행 및 데이터 처리
@@ -145,7 +149,7 @@ if user_input.strip():
     
     # 예외 상황 메시지 출력 (Part 4-3 대응)
     if error_logs:
-        with st.expander("⚠️️ 입력 데이터 유효성 검사 경고 메시지", expanded=True):
+        with st.expander("⚠ 입력 데이터 유효성 검사 경고 메시지", expanded=True):
             for err in error_logs:
                 st.warning(err)
                 
