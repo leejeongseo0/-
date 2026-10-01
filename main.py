@@ -103,7 +103,7 @@ def calculate_scores(sequence: str) -> dict:
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 조건 설정")
 
-# 1) 가중치 슬라이더
+# 1) 가중치 슬라이더 (실시간 반응성 최적화)
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
 
 mit_weight = st.sidebar.slider(
@@ -111,15 +111,14 @@ mit_weight = st.sidebar.slider(
     min_value=0,
     max_value=100,
     value=60,
-    step=5,
-    key="mit_weight_slider"
+    step=1
 )
 
-# 효율성 가중치 실시간 연동 처리 (100 - 안전성 가중치)
+# 안전성에 따라 실시간으로 변하는 효율성 가중치
 doench_weight = 100 - mit_weight
 
-# 슬라이더 조작에 따라 실시간으로 변경되는 효율성 가중치 텍스트
-st.sidebar.markdown(f"⚡ **효율성 (Doench Score) 가중치: `{doench_weight}%`**")
+# 가중치 안내 표시
+st.sidebar.info(f"⚡ **효율성 (Doench Score) 가중치: `{doench_weight}%`**")
 
 st.sidebar.markdown("---")
 
