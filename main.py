@@ -103,7 +103,7 @@ def calculate_scores(sequence: str) -> dict:
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 조건 설정")
 
-# 1) 가중치 슬라이더 (안전성 & 효율성 동적 반응 처리)
+# 1) 가중치 슬라이더
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
 
 mit_weight = st.sidebar.slider(
@@ -114,9 +114,11 @@ mit_weight = st.sidebar.slider(
     step=5,
     key="mit_weight_slider"
 )
+
+# 효율성 가중치 실시간 연동 처리 (100 - 안전성 가중치)
 doench_weight = 100 - mit_weight
 
-# 효율성 가중치 실시간 텍스트 및 상태 안내
+# 슬라이더 조작에 따라 실시간으로 변경되는 효율성 가중치 텍스트
 st.sidebar.markdown(f"⚡ **효율성 (Doench Score) 가중치: `{doench_weight}%`**")
 
 st.sidebar.markdown("---")
@@ -130,17 +132,16 @@ if "grna_input_text_area" not in st.session_state:
     st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
     st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
 
-# 예시 데이터 랜덤 변경 콜백 함수
+# 예시 데이터 무작위 변경 콜백 함수
 def change_random_example_data():
     gene_list = list(DATA_SAMPLES.keys())
-    # 현재 선택된 것과 다른 유전자 중에서 무작위 선택
     available_genes = [g for g in gene_list if g != st.session_state.get("current_gene_name")]
     selected_gene = random.choice(available_genes)
     
     st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
     st.session_state["current_gene_name"] = selected_gene
 
-# 버튼 누를 때마다 예시 데이터를 다른 유전자로 전환
+# 무작위 유전자 데이터 불러오기 버튼
 st.sidebar.button(
     "🎲 다른 유전자 예시 데이터 불러오기", 
     use_container_width=True,
@@ -150,7 +151,7 @@ st.sidebar.button(
 if "current_gene_name" in st.session_state:
     st.sidebar.caption(f"📌 현재 선택된 타깃 유전자: **{st.session_state['current_gene_name']}**")
 
-# 텍스트 입력창 (세션 키 직접 연결)
+# 텍스트 입력창 (세션 키 연결)
 user_input = st.sidebar.text_area(
     "gRNA 서열 목록",
     height=180,
@@ -183,7 +184,7 @@ if user_input.strip():
             
         scores = calculate_scores(seq)
         
-        # 안전성(MIT)과 효율성(Doench) 가중 종합 점수 계산
+        # 가중 종합 점수 계산 (실시간 효율성 가중치 적용)
         weighted_score = (scores["MIT_Score"] * (mit_weight / 100.0)) + (scores["Doench_Score"] * (doench_weight / 100.0))
         
         parsed_results.append({
