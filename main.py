@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import matplotlib.pyplot as plt
 import random
 import os
 import platform
@@ -11,7 +12,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
@@ -210,10 +210,33 @@ def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cuto
     pdf_filename = "gRNA_Screening_Report.pdf"
     img_filename = "temp_chart.png"
     
-    # 1. Plotly 차트 이미지로 저장 (scale 조절로 해상도 확보)
-    fig_obj.write_image(img_filename, width=700, height=350, scale=2)
+    # Matplotlib을 활용한 안전한 PDF 차트 이미지 저장
+    fig_mat, ax = plt.subplots(figsize=(7, 3.5))
+    scatter = ax.scatter(
+        df_results["효율성 (Doench)"], 
+        df_results["안전성 (MIT)"], 
+        c=df_results["종합 점수"], 
+        cmap="PuRd", 
+        s=df_results["종합 점수"] * 2.5,
+        alpha=0.8,
+        edgecolors="#EC4899"
+    )
     
-    # 2. 폰트 설정
+    for _, row in df_results.iterrows():
+        ax.annotate(row["후보명"], (row["효율성 (Doench)"], row["안전성 (MIT)"]),
+                    fontsize=8, ha='center', va='bottom', color='#4A154B', fontweight='bold')
+                    
+    ax.set_xlim(0, 105)
+    ax.set_ylim(0, 105)
+    ax.set_xlabel("Doench Score (Efficiency)", fontsize=9, color='#4A154B')
+    ax.set_ylabel("MIT Score (Safety)", fontsize=9, color='#4A154B')
+    ax.grid(True, linestyle="--", alpha=0.4)
+    plt.colorbar(scatter, ax=ax, label="Total Score")
+    plt.tight_layout()
+    plt.savefig(img_filename, dpi=200)
+    plt.close(fig_mat)
+    
+    # 폰트 등록
     font_name = register_korean_font()
     
     doc = SimpleDocTemplate(
@@ -435,7 +458,7 @@ if user_input.strip():
         
         tab1, tab2 = st.tabs(["📊 2D 스크리닝 맵", "📋 상세 결과 데이터"])
         
-        # 2D 산점도 차트 생성
+        # 2D 산점도 차트 생성 (화면용 Plotly)
         fig = px.scatter(
             df,
             x="효율성 (Doench)",
