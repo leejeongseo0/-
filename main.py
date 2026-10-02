@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import random
+from datetime import datetime
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 기본 설정
@@ -59,6 +60,15 @@ st.markdown("""
         padding: 22px;
         margin-bottom: 20px;
         box-shadow: 0 8px 16px rgba(244, 114, 182, 0.15);
+    }
+
+    .report-card {
+        background-color: #FFFFFF;
+        border: 2px dashed #EC4899;
+        border-radius: 18px;
+        padding: 20px;
+        margin-top: 15px;
+        box-shadow: 0 6px 12px rgba(236, 72, 153, 0.1);
     }
     
     /* 5. 뱃지 스타일 */
@@ -192,7 +202,7 @@ def on_mit_change():
 def on_doench_change():
     st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
 
-mit_weight = st.sidebar.slider("🛡️ 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
+mit_weight = st.sidebar.slider("🛡️️ 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
 doench_weight = st.sidebar.slider("⚡ 효율성 (Doench) 가중치 (%)", 0, 100, key="doench_w", on_change=on_doench_change)
 
 st.sidebar.markdown("---")
@@ -202,7 +212,6 @@ min_mit_cutoff = st.sidebar.slider("최소 요구 안전성 점수", 0, 100, 50,
 st.sidebar.markdown("---")
 st.sidebar.subheader("3. 📝 gRNA 서열 입력")
 
-# 예시 데이터 초기화 및 랜덤 변경 함수
 if "grna_input_text_area" not in st.session_state:
     st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
     st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
@@ -215,7 +224,6 @@ def change_random_example_data():
     st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
     st.session_state["current_gene_name"] = selected_gene
 
-# 🎲 예시 데이터 불러오기 버튼 추가
 st.sidebar.button(
     "🎲 다른 예시 데이터 불러오기", 
     use_container_width=True,
@@ -314,7 +322,69 @@ if user_input.strip():
             st.dataframe(df, use_container_width=True)
             csv = df.to_csv(index=False).encode('utf-8-sig')
             st.download_button("📥 스크리닝 결과 CSV 다운로드", data=csv, file_name="screening_results.csv", mime="text/csv")
+        
+        # -----------------------------------------------------------------------------
+        # 8. [신규 기능] 📄 요약 보고서 생성 섹션
+        # -----------------------------------------------------------------------------
+        st.markdown("---")
+        st.subheader("📄 실험 요약 보고서")
+        
+        if "show_report" not in st.session_state:
+            st.session_state["show_report"] = False
+            
+        col_btn1, col_btn2 = st.columns([2, 5])
+        with col_btn1:
+            if st.button("📝 요약 보고서 생성 / 갱신", use_container_width=True):
+                st.session_state["show_report"] = True
+
+        if st.session_state["show_report"]:
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            gene_title = st.session_state.get("current_gene_name", "사용자 입력 서열")
+            
+            top_3_df = df.head(3)
+            top_3_text = ""
+            for i, r in top_3_df.iterrows():
+                top_3_text += f"   {i+1}위: {r['후보명']} ({r['Sequence']}) - 종합 {r['종합 점수']}점 (안전성: {r['안전성 (MIT)']}, 효율성: {r['효율성 (Doench)']})\n"
+            
+            report_content = f"""==================================================
+🧬 gRNA Clinical Screening Summary Report
+==================================================
+• 분석 일시: {now_str}
+• 대상 유전자: {gene_title}
+• 평가 가중치: 안전성(MIT) {mit_weight}% : 효율성(Doench) {doench_weight}%
+• 최소 안전성 컷오프: {min_mit_cutoff}점
+--------------------------------------------------
+[스크리닝 요약]
+- 총 입력 서열 수: {len(lines)}개
+- 기준 통과 후보 수: {len(df)}개
+
+[TOP 3 추천 후보]
+{top_3_text}
+[최종 선택 TOP 1 가이드]
+• 추천 후보명: {top['후보명']}
+• 서열 (5' -> 3'): {top['Sequence']}
+• GC 함량: {top['GC 함량 (%)']}%
+• 종합 점수: {top['종합 점수']} / 100 점
+=================================================="""
+
+            st.markdown(f"""
+            <div class="report-card">
+                <h4 style="margin-top:0;">📋 스크리닝 요약 리포트 (미리보기)</h4>
+                <p style="font-size:0.9rem; color:#64748B; margin-bottom:12px;">아래 상자의 내용을 복사하거나, [보고서 파일 다운로드] 버튼을 눌러 .txt 파일로 저장하세요.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.code(report_content, language="text")
+            
+            st.download_button(
+                label="📥 보고서 (.txt) 다운로드",
+                data=report_content,
+                file_name=f"gRNA_Screening_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                mime="text/plain"
+            )
+            
     else:
         st.warning("⚠️ 최소 요구 안전성 점수를 충족하는 후보가 없습니다. 필터 기준을 낮춰보세요.")
 else:
     st.info("👈 사이드바에서 gRNA 후보 서열을 입력해 주세요.")
+    
