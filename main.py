@@ -58,7 +58,6 @@ st.markdown("""
         border-radius: 20px;
         padding: 22px;
         margin-bottom: 20px;
-        /* 입체감을 주는 몽글몽글한 그림자 효과 */
         box-shadow: 0 8px 16px rgba(244, 114, 182, 0.15);
     }
     
@@ -124,7 +123,7 @@ st.markdown("✨ **안전성(MIT)**과 **효율성(Doench)**을 한눈에 비교
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 4. 예시 데이터 세트
+# 4. 예시 데이터 세트 정의
 # -----------------------------------------------------------------------------
 DATA_SAMPLES = {
     "HBB (겸상적혈구빈혈증 관련 유전자)": (
@@ -203,10 +202,34 @@ min_mit_cutoff = st.sidebar.slider("최소 요구 안전성 점수", 0, 100, 50,
 st.sidebar.markdown("---")
 st.sidebar.subheader("3. 📝 gRNA 서열 입력")
 
+# 예시 데이터 초기화 및 랜덤 변경 함수
 if "grna_input_text_area" not in st.session_state:
     st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
+    st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
 
-user_input = st.sidebar.text_area("후보 목록 (`후보명, 20bp_서열`)", height=150, key="grna_input_text_area")
+def change_random_example_data():
+    gene_list = list(DATA_SAMPLES.keys())
+    available_genes = [g for g in gene_list if g != st.session_state.get("current_gene_name")]
+    selected_gene = random.choice(available_genes)
+    
+    st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
+    st.session_state["current_gene_name"] = selected_gene
+
+# 🎲 예시 데이터 불러오기 버튼 추가
+st.sidebar.button(
+    "🎲 다른 예시 데이터 불러오기", 
+    use_container_width=True,
+    on_click=change_random_example_data
+)
+
+if "current_gene_name" in st.session_state:
+    st.sidebar.caption(f"📌 현재 선택된 유전자: **{st.session_state['current_gene_name']}**")
+
+user_input = st.sidebar.text_area(
+    "후보 목록 (`후보명, 20bp_서열`)", 
+    height=150, 
+    key="grna_input_text_area"
+)
 
 # -----------------------------------------------------------------------------
 # 7. 메인 화면 구성
@@ -266,7 +289,6 @@ if user_input.strip():
         tab1, tab2 = st.tabs(["📊 2D 스크리닝 맵", "📋 상세 결과 데이터"])
         
         with tab1:
-            # 연핑크 배경에 어울리는 Soft Pink/Purple 계열 그래프
             fig = px.scatter(
                 df,
                 x="효율성 (Doench)",
@@ -275,7 +297,7 @@ if user_input.strip():
                 color="종합 점수",
                 hover_name="후보명",
                 text="후보명",
-                color_continuous_scale="PuRd", # Soft Pink/Purple 단색 스케일
+                color_continuous_scale="PuRd",
                 range_x=[0, 105],
                 range_y=[0, 105]
             )
