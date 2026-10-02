@@ -2,7 +2,18 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import random
+import os
+import platform
 from datetime import datetime
+
+# PDF 생성을 위한 ReportLab 모듈
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 기본 설정
@@ -18,20 +29,17 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    /* 웹 폰트 불러오기 (귀엽고 깔끔한 나눔스퀘어라운드) */
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/NanumSquareRound.woff');
     
     * {
         font-family: 'NanumSquareRound', sans-serif !important;
     }
 
-    /* 1. 메인 배경: 따뜻하고 부드러운 연핑크 톤 */
     .stApp {
         background-color: #FFF0F5;
         color: #2D3748;
     }
     
-    /* 2. 타이틀 및 헤더: 딥 바이올렛 컬러로 색상 통일 */
     h1 {
         color: #4A154B !important;
         font-weight: 800;
@@ -46,13 +54,11 @@ st.markdown("""
         color: #2D3748 !important;
     }
     
-    /* 3. 사이드바: 뽀얀 핑크 화이트 톤 */
     [data-testid="stSidebar"] {
         background-color: #FFF5F7 !important;
         border-right: 2px solid #FCE7F3;
     }
     
-    /* 4. 입체감 있는 귀여운 커스텀 카드 */
     .custom-card {
         background-color: #FFFFFF;
         border: 2px solid #FBCFE8;
@@ -71,7 +77,6 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(236, 72, 153, 0.1);
     }
     
-    /* 5. 뱃지 스타일 */
     .badge-best {
         background-color: #FCE7F3;
         color: #DB2777 !important;
@@ -84,7 +89,6 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(219, 39, 119, 0.1);
     }
     
-    /* 6. 메트릭 카드의 수치 및 입체감 강화 */
     div[data-testid="stMetric"] {
         background-color: #FFFFFF;
         border: 2px solid #FBCFE8;
@@ -93,7 +97,6 @@ st.markdown("""
         box-shadow: 0 6px 12px rgba(244, 114, 182, 0.12);
     }
     
-    /* 7. 귀여운 푸시 버튼 (입체 효과) */
     .stButton>button {
         background-color: #EC4899 !important;
         color: #FFFFFF !important;
@@ -110,12 +113,10 @@ st.markdown("""
         background-color: #DB2777 !important;
     }
     
-    /* 8. 슬라이더 바 색상 */
     div[data-baseweb="slider"] div {
         background-color: #EC4899 !important;
     }
     
-    /* 9. 입력창 라운딩 & 그림자 */
     textarea {
         border-radius: 12px !important;
         border: 1.5px solid #FBCFE8 !important;
@@ -186,7 +187,147 @@ def calculate_scores(sequence: str) -> dict:
     }
 
 # -----------------------------------------------------------------------------
-# 6. 사이드바 - 설정 및 입력
+# 6. PDF 생성용 헬퍼 함수
+# -----------------------------------------------------------------------------
+def register_korean_font():
+    """OS 환경에 따른 한글 폰트 등록"""
+    system_name = platform.system()
+    font_path = None
+    
+    if system_name == "Windows":
+        font_path = "C:/Windows/Fonts/malgun.ttf"
+    elif system_name == "Darwin":
+        font_path = "/System/Library/Fonts/Supplemental/AppleGothic.ttf"
+    else:
+        font_path = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"
+        
+    if font_path and os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont("KoreanFont", font_path))
+        return "KoreanFont"
+    return "Helvetica"
+
+def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cutoff, fig_obj):
+    pdf_filename = "gRNA_Screening_Report.pdf"
+    img_filename = "temp_chart.png"
+    
+    # 1. Plotly 차트 이미지로 저장 (scale 조절로 해상도 확보)
+    fig_obj.write_image(img_filename, width=700, height=350, scale=2)
+    
+    # 2. 폰트 설정
+    font_name = register_korean_font()
+    
+    doc = SimpleDocTemplate(
+        pdf_filename,
+        pagesize=letter,
+        rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36
+    )
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontName=font_name,
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor('#4A154B'),
+        spaceAfter=10
+    )
+    h2_style = ParagraphStyle(
+        'DocH2',
+        parent=styles['Heading2'],
+        fontName=font_name,
+        fontSize=13,
+        leading=16,
+        textColor=colors.HexColor('#EC4899'),
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    body_style = ParagraphStyle(
+        'DocBody',
+        parent=styles['Normal'],
+        fontName=font_name,
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#2D3748')
+    )
+    
+    elements = []
+    
+    # 헤더
+    elements.append(Paragraph("🧬 gRNA Clinical Screening Summary Report", title_style))
+    elements.append(Paragraph(f"<b>생성 일시:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | <b>대상 유전자:</b> {gene_name}", body_style))
+    elements.append(Spacer(1, 10))
+    
+    # 스크리닝 요약 테이블
+    summary_data = [
+        [Paragraph("<b>구분</b>", body_style), Paragraph("<b>설정 및 결과 값</b>", body_style)],
+        [Paragraph("가중치 설정", body_style), Paragraph(f"안전성 (MIT) {mit_w}% : 효율성 (Doench) {doench_w}%", body_style)],
+        [Paragraph("최소 안전성 컷오프", body_style), Paragraph(f"{min_cutoff} 점", body_style)],
+        [Paragraph("스크리닝 통과 후보", body_style), Paragraph(f"총 {len(df_results)} 개", body_style)],
+        [Paragraph("<b>최우수 추천 후보 (TOP 1)</b>", body_style), Paragraph(f"<b>{top_cand['후보명']}</b> ({top_cand['Sequence']}) - <b>종합 {top_cand['종합 점수']}점</b>", body_style)]
+    ]
+    
+    t_summary = Table(summary_data, colWidths=[150, 390])
+    t_summary.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FCE7F3')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#DB2777')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FBCFE8')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(t_summary)
+    
+    # 2D 스크리닝 그래프 삽입
+    elements.append(Paragraph("📊 2D 스크리닝 분석 맵", h2_style))
+    elements.append(Image(img_filename, width=540, height=270))
+    elements.append(Spacer(1, 10))
+    
+    # TOP 후보 상세 목록 테이블
+    elements.append(Paragraph("📋 후보 리스트 (종합 점수 순)", h2_style))
+    
+    table_data = [[
+        Paragraph("<b>순위</b>", body_style),
+        Paragraph("<b>후보명</b>", body_style),
+        Paragraph("<b>Sequence (20bp)</b>", body_style),
+        Paragraph("<b>안전성</b>", body_style),
+        Paragraph("<b>효율성</b>", body_style),
+        Paragraph("<b>종합점수</b>", body_style)
+    ]]
+    
+    for idx, row in df_results.iterrows():
+        table_data.append([
+            Paragraph(str(idx + 1), body_style),
+            Paragraph(str(row['후보명']), body_style),
+            Paragraph(str(row['Sequence']), body_style),
+            Paragraph(str(row['안전성 (MIT)']), body_style),
+            Paragraph(str(row['효율성 (Doench)']), body_style),
+            Paragraph(f"<b>{row['종합 점수']}</b>", body_style)
+        ])
+        
+    t_results = Table(table_data, colWidths=[35, 120, 180, 65, 65, 75])
+    t_results.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFF0F5')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FBCFE8')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    elements.append(t_results)
+    
+    doc.build(elements)
+    
+    # 임시 차트 이미지 삭제
+    if os.path.exists(img_filename):
+        os.remove(img_filename)
+        
+    return pdf_filename
+
+# -----------------------------------------------------------------------------
+# 7. 사이드바 - 설정 및 입력
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 설정")
 
@@ -202,7 +343,7 @@ def on_mit_change():
 def on_doench_change():
     st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
 
-mit_weight = st.sidebar.slider("🛡️️ 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
+mit_weight = st.sidebar.slider("🛡 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
 doench_weight = st.sidebar.slider("⚡ 효율성 (Doench) 가중치 (%)", 0, 100, key="doench_w", on_change=on_doench_change)
 
 st.sidebar.markdown("---")
@@ -240,7 +381,7 @@ user_input = st.sidebar.text_area(
 )
 
 # -----------------------------------------------------------------------------
-# 7. 메인 화면 구성
+# 8. 메인 화면 구성
 # -----------------------------------------------------------------------------
 if user_input.strip():
     lines = user_input.strip().split("\n")
@@ -271,7 +412,6 @@ if user_input.strip():
         df = pd.DataFrame(parsed_results).sort_values(by="종합 점수", ascending=False).reset_index(drop=True)
         top = df.iloc[0]
         
-        # 📊 요약 메트릭 상자
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🔬 통과 후보", f"{len(df)}개")
         m2.metric("🏆 최상위 후보", top["후보명"])
@@ -280,7 +420,6 @@ if user_input.strip():
         
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 📌 최상위 1위 후보 입체 강조 카드
         st.markdown(f"""
         <div class="custom-card">
             <span class="badge-best">🏆 TOP CANDIDATE</span>
@@ -296,26 +435,28 @@ if user_input.strip():
         
         tab1, tab2 = st.tabs(["📊 2D 스크리닝 맵", "📋 상세 결과 데이터"])
         
+        # 2D 산점도 차트 생성
+        fig = px.scatter(
+            df,
+            x="효율성 (Doench)",
+            y="안전성 (MIT)",
+            size="종합 점수",
+            color="종합 점수",
+            hover_name="후보명",
+            text="후보명",
+            color_continuous_scale="PuRd",
+            range_x=[0, 105],
+            range_y=[0, 105]
+        )
+        fig.update_traces(textposition='top center')
+        fig.update_layout(
+            height=460,
+            paper_bgcolor='#FFF0F5',
+            plot_bgcolor='#FFFFFF',
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        
         with tab1:
-            fig = px.scatter(
-                df,
-                x="효율성 (Doench)",
-                y="안전성 (MIT)",
-                size="종합 점수",
-                color="종합 점수",
-                hover_name="후보명",
-                text="후보명",
-                color_continuous_scale="PuRd",
-                range_x=[0, 105],
-                range_y=[0, 105]
-            )
-            fig.update_traces(textposition='top center')
-            fig.update_layout(
-                height=460,
-                paper_bgcolor='#FFF0F5',
-                plot_bgcolor='#FFFFFF',
-                margin=dict(l=20, r=20, t=20, b=20)
-            )
             st.plotly_chart(fig, use_container_width=True)
             
         with tab2:
@@ -324,67 +465,35 @@ if user_input.strip():
             st.download_button("📥 스크리닝 결과 CSV 다운로드", data=csv, file_name="screening_results.csv", mime="text/csv")
         
         # -----------------------------------------------------------------------------
-        # 8. [신규 기능] 📄 요약 보고서 생성 섹션
+        # 9. 📄 [PDF 변환] 스크리닝 리포트 다운로드 섹션
         # -----------------------------------------------------------------------------
         st.markdown("---")
-        st.subheader("📄 실험 요약 보고서")
+        st.subheader("📄 PDF 리포트 출력")
         
-        if "show_report" not in st.session_state:
-            st.session_state["show_report"] = False
-            
-        col_btn1, col_btn2 = st.columns([2, 5])
-        with col_btn1:
-            if st.button("📝 요약 보고서 생성 / 갱신", use_container_width=True):
-                st.session_state["show_report"] = True
+        col_pdf1, col_pdf2 = st.columns([2, 5])
+        with col_pdf1:
+            if st.button("📑 PDF 요약 리포트 생성", use_container_width=True):
+                with st.spinner("그래프 이미지 포함 PDF 리포트를 생성하는 중입니다..."):
+                    gene_label = st.session_state.get("current_gene_name", "직접 입력 서열")
+                    pdf_file_path = create_pdf_report(
+                        df, top, gene_label, mit_weight, doench_weight, min_mit_cutoff, fig
+                    )
+                    
+                    with open(pdf_file_path, "rb") as pdf_file:
+                        pdf_bytes = pdf_file.read()
+                        
+                    st.session_state["pdf_bytes"] = pdf_bytes
+                    st.success("PDF 생성이 완료되었습니다!")
 
-        if st.session_state["show_report"]:
-            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            gene_title = st.session_state.get("current_gene_name", "사용자 입력 서열")
-            
-            top_3_df = df.head(3)
-            top_3_text = ""
-            for i, r in top_3_df.iterrows():
-                top_3_text += f"   {i+1}위: {r['후보명']} ({r['Sequence']}) - 종합 {r['종합 점수']}점 (안전성: {r['안전성 (MIT)']}, 효율성: {r['효율성 (Doench)']})\n"
-            
-            report_content = f"""==================================================
-🧬 gRNA Clinical Screening Summary Report
-==================================================
-• 분석 일시: {now_str}
-• 대상 유전자: {gene_title}
-• 평가 가중치: 안전성(MIT) {mit_weight}% : 효율성(Doench) {doench_weight}%
-• 최소 안전성 컷오프: {min_mit_cutoff}점
---------------------------------------------------
-[스크리닝 요약]
-- 총 입력 서열 수: {len(lines)}개
-- 기준 통과 후보 수: {len(df)}개
-
-[TOP 3 추천 후보]
-{top_3_text}
-[최종 선택 TOP 1 가이드]
-• 추천 후보명: {top['후보명']}
-• 서열 (5' -> 3'): {top['Sequence']}
-• GC 함량: {top['GC 함량 (%)']}%
-• 종합 점수: {top['종합 점수']} / 100 점
-=================================================="""
-
-            st.markdown(f"""
-            <div class="report-card">
-                <h4 style="margin-top:0;">📋 스크리닝 요약 리포트 (미리보기)</h4>
-                <p style="font-size:0.9rem; color:#64748B; margin-bottom:12px;">아래 상자의 내용을 복사하거나, [보고서 파일 다운로드] 버튼을 눌러 .txt 파일로 저장하세요.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.code(report_content, language="text")
-            
+        if "pdf_bytes" in st.session_state:
             st.download_button(
-                label="📥 보고서 (.txt) 다운로드",
-                data=report_content,
-                file_name=f"gRNA_Screening_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain"
+                label="📥 PDF 리포트 다운로드",
+                data=st.session_state["pdf_bytes"],
+                file_name=f"gRNA_Screening_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
             )
             
     else:
         st.warning("⚠️ 최소 요구 안전성 점수를 충족하는 후보가 없습니다. 필터 기준을 낮춰보세요.")
 else:
     st.info("👈 사이드바에서 gRNA 후보 서열을 입력해 주세요.")
-    
