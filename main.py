@@ -12,6 +12,72 @@ st.set_page_config(
     layout="wide"
 )
 
+# -----------------------------------------------------------------------------
+# 2. 테마 3: 차세대 바이오테크 (Modern Biotech Emerald) Custom CSS
+# -----------------------------------------------------------------------------
+st.markdown("""
+<style>
+    /* 메인 배경 및 기본 폰트 색상 */
+    .stApp {
+        background-color: #F8FAFC;
+    }
+    
+    /* 헤더 및 타이틀 스타일 */
+    h1 {
+        color: #064E3B !important;
+        font-weight: 700;
+    }
+    h2, h3 {
+        color: #047857 !important;
+    }
+    
+    /* 사이드바 스타일링 */
+    [data-testid="stSidebar"] {
+        background-color: #ECFDF5 !important;
+        border-right: 1px solid #A7F3D0;
+    }
+    
+    /* 버튼 스타일링 */
+    .stButton>button {
+        background-color: #10B981 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #059669 !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    
+    /* 슬라이더 색상 (에메랄드 톤) */
+    div[data-baseweb="slider"] div {
+        background-color: #10B981 !important;
+    }
+    
+    /* 탭 디자인 Custom */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #E2E8F0;
+        border-radius: 6px;
+        padding: 8px 16px;
+        color: #334155;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #10B981 !important;
+        color: white !important;
+    }
+    
+    /* 정보 안내 박스 커스텀 */
+    .stAlert {
+        border-radius: 10px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 st.title("🧬 유전자 가위 안전성·효율성 통합 계산 및 맞춤형 후보 선별 도구")
 st.markdown("""
 본 시스템은 연구 목적(부작용 최소화 vs 편집 효율 극대화)에 맞춰 **gRNA의 안전성(MIT Score)과 효율성(Doench Score)**에 
@@ -19,7 +85,7 @@ st.markdown("""
 """)
 
 # -----------------------------------------------------------------------------
-# 2. 다양한 대표 유전자 gRNA 예시 데이터 세트 정의
+# 3. 다양한 대표 유전자 gRNA 예시 데이터 세트 정의
 # -----------------------------------------------------------------------------
 DATA_SAMPLES = {
     "HBB (겸상적혈구빈혈증 관련 유전자)": (
@@ -60,7 +126,7 @@ DATA_SAMPLES = {
 }
 
 # -----------------------------------------------------------------------------
-# 3. 로직 및 계산 함수 정의
+# 4. 로직 및 계산 함수 정의
 # -----------------------------------------------------------------------------
 
 def validate_grna(sequence: str) -> tuple[bool, str]:
@@ -99,26 +165,23 @@ def calculate_scores(sequence: str) -> dict:
     }
 
 # -----------------------------------------------------------------------------
-# 4. 사이드바 - 양방향 연동 가중치 슬라이더 설정
+# 5. 사이드바 - 양방향 연동 가중치 슬라이더 설정
 # -----------------------------------------------------------------------------
 st.sidebar.header("⚙ 스크리닝 조건 설정")
 st.sidebar.subheader("1. 평가 가중치 비율 설정")
 
-# 초기 세션 상태 설정 (기본값: 안전성 60, 효율성 40)
+# 초기 세션 상태 설정
 if "mit_w" not in st.session_state:
     st.session_state["mit_w"] = 60
 if "doench_w" not in st.session_state:
     st.session_state["doench_w"] = 40
 
-# 안전성 슬라이더를 움직였을 때 호출
 def on_mit_change():
     st.session_state["doench_w"] = 100 - st.session_state["mit_w"]
 
-# 효율성 슬라이더를 움직였을 때 호출
 def on_doench_change():
     st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
 
-# 1) 안전성 슬라이더
 mit_weight = st.sidebar.slider(
     "🛡️ 안전성 (MIT Score) 가중치 (%)",
     min_value=0,
@@ -128,7 +191,6 @@ mit_weight = st.sidebar.slider(
     on_change=on_mit_change
 )
 
-# 2) 효율성 슬라이더 (이제 이 버튼도 조작 가능합니다!)
 doench_weight = st.sidebar.slider(
     "⚡ 효율성 (Doench Score) 가중치 (%)",
     min_value=0,
@@ -142,7 +204,7 @@ st.sidebar.caption(f"💡 가중치 합계: **{mit_weight + doench_weight}%** (�
 st.sidebar.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 5. 사이드바 - gRNA 후보 서열 입력
+# 6. 사이드바 - gRNA 후보 서열 입력
 # -----------------------------------------------------------------------------
 st.sidebar.subheader("2. gRNA 후보 서열 입력")
 st.sidebar.caption("형식: `후보명, 20bp_DNA_서열` (한 줄에 하나씩)")
@@ -175,7 +237,7 @@ user_input = st.sidebar.text_area(
 )
 
 # -----------------------------------------------------------------------------
-# 6. 메인 화면 - 분석 실행 및 데이터 처리
+# 7. 메인 화면 - 분석 실행 및 데이터 처리
 # -----------------------------------------------------------------------------
 if user_input.strip():
     lines = user_input.strip().split("\n")
@@ -233,6 +295,7 @@ if user_input.strip():
             st.subheader("안전성 vs 효율성 2D 스크리닝 지도")
             st.caption("그래프의 **우상단(오른쪽 위)**에 위치할수록 안전성과 효율성을 모두 충족하는 최적의 gRNA입니다.")
             
+            # 에메랄드 테마에 맞춘 Plotly 컬러 스케일 적용 (Emerald / Mint 톤)
             fig = px.scatter(
                 df,
                 x="효율성 (Doench)",
@@ -242,12 +305,16 @@ if user_input.strip():
                 hover_name="후보명",
                 hover_data=["Sequence (20bp)", "GC 함량 (%)"],
                 text="후보명",
-                color_continuous_scale="Viridis",
+                color_continuous_scale="Emrld",  # Emerald 테마 색상 팔레트
                 range_x=[0, 105],
                 range_y=[0, 105]
             )
             fig.update_traces(textposition='top center', marker=dict(sizeref=0.1, sizemode='area'))
-            fig.update_layout(height=500)
+            fig.update_layout(
+                height=500,
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(240,253,244,0.5)'
+            )
             st.plotly_chart(fig, use_container_width=True)
             
         with tab2:
