@@ -7,99 +7,124 @@ import random
 # 1. 페이지 기본 설정
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="유전자 가위 임상 적합성 스크리닝 도구",
+    page_title="gRNA Clinical Screening Tool",
     page_icon="🧬",
     layout="wide"
 )
 
 # -----------------------------------------------------------------------------
-# 2. 테마 1: 딥 사이언스 & 다크 모드 (Deep Science Dark Mode) Custom CSS
+# 2. 연핑크 배경 & 입체감 있는 귀여운 폰트 Custom CSS
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    /* 메인 배경 및 기본 다크 톤 설정 */
+    /* 웹 폰트 불러오기 (귀엽고 깔끔한 나눔스퀘어라운드) */
+    @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/NanumSquareRound.woff');
+    
+    * {
+        font-family: 'NanumSquareRound', sans-serif !important;
+    }
+
+    /* 1. 메인 배경: 따뜻하고 부드러운 연핑크 톤 */
     .stApp {
-        background-color: #0E1117;
-        color: #E2E8F0;
+        background-color: #FFF0F5;
+        color: #2D3748;
     }
     
-    /* 헤더 및 타이틀 스타일 (네온 사이언 & 그린 Accent) */
+    /* 2. 타이틀 및 헤더: 딥 바이올렛 컬러로 색상 통일 */
     h1 {
-        color: #00F2FE !important;
+        color: #4A154B !important;
+        font-weight: 800;
+        font-size: 2.2rem !important;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    h2, h3, h4 {
+        color: #4A154B !important;
         font-weight: 700;
-        text-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
     }
-    h2, h3 {
-        color: #38BDF8 !important;
+    p, span, label {
+        color: #2D3748 !important;
     }
     
-    /* 사이드바 스타일링 (다크 네이비) */
+    /* 3. 사이드바: 뽀얀 핑크 화이트 톤 */
     [data-testid="stSidebar"] {
-        background-color: #161B22 !important;
-        border-right: 1px solid #30363D;
+        background-color: #FFF5F7 !important;
+        border-right: 2px solid #FCE7F3;
     }
     
-    /* 버튼 스타일링 (네온 버턴) */
+    /* 4. 입체감 있는 귀여운 커스텀 카드 */
+    .custom-card {
+        background-color: #FFFFFF;
+        border: 2px solid #FBCFE8;
+        border-radius: 20px;
+        padding: 22px;
+        margin-bottom: 20px;
+        /* 입체감을 주는 몽글몽글한 그림자 효과 */
+        box-shadow: 0 8px 16px rgba(244, 114, 182, 0.15);
+    }
+    
+    /* 5. 뱃지 스타일 */
+    .badge-best {
+        background-color: #FCE7F3;
+        color: #DB2777 !important;
+        padding: 6px 14px;
+        border-radius: 15px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        display: inline-block;
+        margin-bottom: 8px;
+        box-shadow: 0 2px 4px rgba(219, 39, 119, 0.1);
+    }
+    
+    /* 6. 메트릭 카드의 수치 및 입체감 강화 */
+    div[data-testid="stMetric"] {
+        background-color: #FFFFFF;
+        border: 2px solid #FBCFE8;
+        padding: 16px;
+        border-radius: 18px;
+        box-shadow: 0 6px 12px rgba(244, 114, 182, 0.12);
+    }
+    
+    /* 7. 귀여운 푸시 버튼 (입체 효과) */
     .stButton>button {
-        background-color: #0284C7 !important;
-        color: white !important;
-        border-radius: 8px !important;
-        border: 1px solid #38BDF8 !important;
-        font-weight: 600 !important;
-        transition: all 0.3s ease;
+        background-color: #EC4899 !important;
+        color: #FFFFFF !important;
+        border-radius: 14px !important;
+        border: none !important;
+        font-weight: 700 !important;
+        padding: 10px 20px !important;
+        box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3);
+        transition: all 0.2s ease;
     }
     .stButton>button:hover {
-        background-color: #0369A1 !important;
-        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(236, 72, 153, 0.4);
+        background-color: #DB2777 !important;
     }
     
-    /* 슬라이더 트랙 색상 (포인트 컬러) */
+    /* 8. 슬라이더 바 색상 */
     div[data-baseweb="slider"] div {
-        background-color: #00F2FE !important;
+        background-color: #EC4899 !important;
     }
     
-    /* 탭 디자인 Custom (다크 모드 스타일) */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #21262D;
-        border-radius: 6px;
-        padding: 8px 16px;
-        color: #94A3B8;
-        border: 1px solid #30363D;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #0284C7 !important;
-        color: white !important;
-        border-color: #38BDF8 !important;
-    }
-    
-    /* 텍스트 입력창 다크 스타일링 */
+    /* 9. 입력창 라운딩 & 그림자 */
     textarea {
-        background-color: #0D1117 !important;
-        color: #E2E8F0 !important;
-        border: 1px solid #30363D !important;
-    }
-    
-    /* 안내 박스 및 Alert 배경 */
-    .stAlert {
-        border-radius: 10px !important;
-        background-color: #1E293B !important;
-        color: #F8FAFC !important;
-        border: 1px solid #334155 !important;
+        border-radius: 12px !important;
+        border: 1.5px solid #FBCFE8 !important;
+        background-color: #FFFFFF !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧬 유전자 가위 안전성·효율성 통합 계산 및 맞춤형 후보 선별 도구")
-st.markdown("""
-본 시스템은 연구 목적(부작용 최소화 vs 편집 효율 극대화)에 맞춰 **gRNA의 안전성(MIT Score)과 효율성(Doench Score)**에 
-가중치를 직접 부여하고, 2D 산점도를 통해 최적의 표적 후보를 선별하는 웹 기반 스크리닝 서비스입니다.
-""")
+# -----------------------------------------------------------------------------
+# 3. 타이틀 및 안내 Banner
+# -----------------------------------------------------------------------------
+st.title("🧬 유전자 가위 임상 적합성 스크리닝 도구")
+st.markdown("✨ **안전성(MIT)**과 **효율성(Doench)**을 한눈에 비교하고 최적의 표적 후보를 선별해보세요!")
+
+st.markdown("---")
 
 # -----------------------------------------------------------------------------
-# 3. 다양한 대표 유전자 gRNA 예시 데이터 세트 정의
+# 4. 예시 데이터 세트
 # -----------------------------------------------------------------------------
 DATA_SAMPLES = {
     "HBB (겸상적혈구빈혈증 관련 유전자)": (
@@ -122,52 +147,25 @@ DATA_SAMPLES = {
         "TP53_Exon7_B, GCGCACTGACCACTGGATGG\n"
         "TP53_Exon8_C, CCTATCCTGAGTAGTGGTAA\n"
         "TP53_Exon10_D, CGTGTTTGTGCCTGTCCTGG"
-    ),
-    "CFTR (낭성섬유증 관련 유전자)": (
-        "CFTR_F508del_1, CACCATTAAAGAAAATATCA\n"
-        "CFTR_Exon3_A, ATTAAGCACAGTGGAAGAAT\n"
-        "CFTR_Exon10_B, TGATGAAGTAGAAGTAATAC\n"
-        "CFTR_Exon13_C, TTGCTCGTTGACCTCCACTC\n"
-        "CFTR_Exon20_D, AGAGTACTTGGAGAAGGCTC"
-    ),
-    "MYC (종양 유전자)": (
-        "MYC_Exon1_1, GCTGCTTAGACGCTGGATTT\n"
-        "MYC_Exon2_A, GTGCTCCATGAGGAGACACC\n"
-        "MYC_Exon2_B, CGACTCTGAGGAGGAACAAG\n"
-        "MYC_Exon3_C, TCCAGCAGAAGGTGATCCAG\n"
-        "MYC_Promoter_D, GCGACGCGCCCCAAGTTGGC"
     )
 }
 
 # -----------------------------------------------------------------------------
-# 4. 로직 및 계산 함수 정의
+# 5. 계산 로직
 # -----------------------------------------------------------------------------
-
 def validate_grna(sequence: str) -> tuple[bool, str]:
-    """gRNA 서열 유효성 검사 (20bp, ATGC 여부)"""
     seq = sequence.strip().upper()
     if len(seq) != 20:
-        return False, f"서열 길이가 20bp가 아닙니다. (현재 {len(seq)}bp)"
-    valid_bases = {'A', 'T', 'G', 'C'}
-    if not set(seq).issubset(valid_bases):
-        invalid_chars = set(seq) - valid_bases
-        return False, f"유효하지 않은 염기가 포함되어 있습니다: {', '.join(invalid_chars)}"
+        return False, f"길이 오류 ({len(seq)}bp)"
+    if not set(seq).issubset({'A', 'T', 'G', 'C'}):
+        return False, "유효하지 않은 염기 포함"
     return True, "정상"
 
 def calculate_scores(sequence: str) -> dict:
-    """GC 함량 기반 Doench(효율성) 및 Seed 영역 기반 MIT(안전성) 점수 계산"""
     seq = sequence.strip().upper()
+    gc_content = ((seq.count('G') + seq.count('C')) / 20) * 100
+    doench_score = max(10, 100 - (abs(gc_content - 50) * 2.8))
     
-    # 1. GC 함량 계산
-    g_count = seq.count('G')
-    c_count = seq.count('C')
-    gc_content = ((g_count + c_count) / 20) * 100
-    
-    # 2. Doench Score (효율성)
-    gc_diff = abs(gc_content - 50)
-    doench_score = max(10, 100 - (gc_diff * 2.8))
-    
-    # 3. MIT Score (안전성)
     seed_region = seq[10:]
     seed_gc = ((seed_region.count('G') + seed_region.count('C')) / 10) * 100
     mit_score = max(15, 95 - abs(seed_gc - 50) * 1.5)
@@ -179,12 +177,11 @@ def calculate_scores(sequence: str) -> dict:
     }
 
 # -----------------------------------------------------------------------------
-# 5. 사이드바 - 양방향 연동 가중치 슬라이더 설정
+# 6. 사이드바 - 설정 및 입력
 # -----------------------------------------------------------------------------
-st.sidebar.header("⚙ 스크리닝 조건 설정")
-st.sidebar.subheader("1. 평가 가중치 비율 설정")
+st.sidebar.header("⚙ 스크리닝 설정")
 
-# 초기 세션 상태 설정
+st.sidebar.subheader("1. ⚖️ 가중치 비율 설정")
 if "mit_w" not in st.session_state:
     st.session_state["mit_w"] = 60
 if "doench_w" not in st.session_state:
@@ -196,154 +193,106 @@ def on_mit_change():
 def on_doench_change():
     st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
 
-mit_weight = st.sidebar.slider(
-    "🛡️ 안전성 (MIT Score) 가중치 (%)",
-    min_value=0,
-    max_value=100,
-    step=1,
-    key="mit_w",
-    on_change=on_mit_change
-)
+mit_weight = st.sidebar.slider("🛡️ 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
+doench_weight = st.sidebar.slider("⚡ 효율성 (Doench) 가중치 (%)", 0, 100, key="doench_w", on_change=on_doench_change)
 
-doench_weight = st.sidebar.slider(
-    "⚡ 효율성 (Doench Score) 가중치 (%)",
-    min_value=0,
-    max_value=100,
-    step=1,
-    key="doench_w",
-    on_change=on_doench_change
-)
-
-st.sidebar.caption(f"💡 가중치 합계: **{mit_weight + doench_weight}%** (안전성 {mit_weight}% : 효율성 {doench_weight}%)")
 st.sidebar.markdown("---")
+st.sidebar.subheader("2. 🎯 최소 품질 컷오프")
+min_mit_cutoff = st.sidebar.slider("최소 요구 안전성 점수", 0, 100, 50, step=5)
 
-# -----------------------------------------------------------------------------
-# 6. 사이드바 - gRNA 후보 서열 입력
-# -----------------------------------------------------------------------------
-st.sidebar.subheader("2. gRNA 후보 서열 입력")
-st.sidebar.caption("형식: `후보명, 20bp_DNA_서열` (한 줄에 하나씩)")
+st.sidebar.markdown("---")
+st.sidebar.subheader("3. 📝 gRNA 서열 입력")
 
 if "grna_input_text_area" not in st.session_state:
     st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
-    st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
 
-def change_random_example_data():
-    gene_list = list(DATA_SAMPLES.keys())
-    available_genes = [g for g in gene_list if g != st.session_state.get("current_gene_name")]
-    selected_gene = random.choice(available_genes)
-    
-    st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
-    st.session_state["current_gene_name"] = selected_gene
-
-st.sidebar.button(
-    "🎲 다른 유전자 예시 데이터 불러오기", 
-    use_container_width=True,
-    on_click=change_random_example_data
-)
-
-if "current_gene_name" in st.session_state:
-    st.sidebar.caption(f"📌 현재 선택된 타깃 유전자: **{st.session_state['current_gene_name']}**")
-
-user_input = st.sidebar.text_area(
-    "gRNA 서열 목록",
-    height=180,
-    key="grna_input_text_area"
-)
+user_input = st.sidebar.text_area("후보 목록 (`후보명, 20bp_서열`)", height=150, key="grna_input_text_area")
 
 # -----------------------------------------------------------------------------
-# 7. 메인 화면 - 분석 실행 및 데이터 처리
+# 7. 메인 화면 구성
 # -----------------------------------------------------------------------------
 if user_input.strip():
     lines = user_input.strip().split("\n")
     parsed_results = []
-    error_logs = []
     
     for idx, line in enumerate(lines, 1):
-        if not line.strip():
+        if not line.strip() or "," not in line:
             continue
         parts = line.split(",")
-        if len(parts) != 2:
-            error_logs.append(f"Line {idx}: '후보명, 서열' 형식이 아닙니다. (`{line.strip()}`)")
-            continue
-            
-        name = parts[0].strip()
-        seq = parts[1].strip().upper()
+        name, seq = parts[0].strip(), parts[1].strip().upper()
         
-        is_valid, msg = validate_grna(seq)
-        if not is_valid:
-            error_logs.append(f"Line {idx} [{name}]: {msg}")
-            continue
+        is_valid, _ = validate_grna(seq)
+        if is_valid:
+            scores = calculate_scores(seq)
+            weighted = (scores["MIT_Score"] * (mit_weight / 100.0)) + (scores["Doench_Score"] * (doench_weight / 100.0))
             
-        scores = calculate_scores(seq)
-        weighted_score = (scores["MIT_Score"] * (mit_weight / 100.0)) + (scores["Doench_Score"] * (doench_weight / 100.0))
-        
-        parsed_results.append({
-            "후보명": name,
-            "Sequence (20bp)": seq,
-            "GC 함량 (%)": scores["GC_Ratio"],
-            "안전성 (MIT)": scores["MIT_Score"],
-            "효율성 (Doench)": scores["Doench_Score"],
-            "임상 종합 점수": round(weighted_score, 1)
-        })
-    
-    if error_logs:
-        with st.expander("⚠ 입력 데이터 유효성 검사 경고 메시지", expanded=True):
-            for err in error_logs:
-                st.warning(err)
-                
+            if scores["MIT_Score"] >= min_mit_cutoff:
+                parsed_results.append({
+                    "후보명": name,
+                    "Sequence": seq,
+                    "GC 함량 (%)": scores["GC_Ratio"],
+                    "안전성 (MIT)": scores["MIT_Score"],
+                    "효율성 (Doench)": scores["Doench_Score"],
+                    "종합 점수": round(weighted, 1)
+                })
+
     if parsed_results:
-        df = pd.DataFrame(parsed_results)
-        df = df.sort_values(by="임상 종합 점수", ascending=False).reset_index(drop=True)
+        df = pd.DataFrame(parsed_results).sort_values(by="종합 점수", ascending=False).reset_index(drop=True)
+        top = df.iloc[0]
         
-        top_candidate = df.iloc[0]
+        # 📊 요약 메트릭 상자
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("🔬 통과 후보", f"{len(df)}개")
+        m2.metric("🏆 최상위 후보", top["후보명"])
+        m3.metric("⭐ 최고 종합점수", f"{top['종합 점수']}점")
+        m4.metric("🛡️ 평균 안전성", f"{round(df['안전성 (MIT)'].mean(), 1)}점")
         
-        st.success(
-            f"🏆 **선택 가중치 (안전성 {mit_weight}% : 효율성 {doench_weight}%) 기준 최적 gRNA:** **{top_candidate['후보명']}** "
-            f"(종합 점수: {top_candidate['임상 종합 점수']}점 | "
-            f"안전성: {top_candidate['안전성 (MIT)']}점 / 효율성: {top_candidate['효율성 (Doench)']}점)"
-        )
+        st.markdown("<br>", unsafe_allow_html=True)
         
-        tab1, tab2 = st.tabs(["📊 2D 스크리닝 Map (시각화)", "📋 전체 결과 데이터"])
+        # 📌 최상위 1위 후보 입체 강조 카드
+        st.markdown(f"""
+        <div class="custom-card">
+            <span class="badge-best">🏆 TOP CANDIDATE</span>
+            <h3 style="margin: 6px 0 12px 0;">{top['후보명']} <span style="font-size:0.95rem; color:#64748B;">({top['Sequence']})</span></h3>
+            <p style="margin:0; font-size:1rem; color:#334155;">
+                <b>GC 함량:</b> {top['GC 함량 (%)']}% &nbsp;|&nbsp; 
+                <b>안전성 점수:</b> {top['안전성 (MIT)']}점 &nbsp;|&nbsp; 
+                <b>효율성 점수:</b> {top['효율성 (Doench)']}점 &nbsp;|&nbsp; 
+                <b>최종 종합 점수:</b> <span style="color:#EC4899; font-weight:800; font-size:1.1rem;">{top['종합 점수']}점</span>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tab1, tab2 = st.tabs(["📊 2D 스크리닝 맵", "📋 상세 결과 데이터"])
         
         with tab1:
-            st.subheader("안전성 vs 효율성 2D 스크리닝 지도")
-            st.caption("그래프의 **우상단(오른쪽 위)**에 위치할수록 안전성과 효율성을 모두 충족하는 최적의 gRNA입니다.")
-            
-            # 다크 모드 맞춤 Plotly 시각화 (plotly_dark 템플릿 & Turbo/Cyan 네온 팔레트)
+            # 연핑크 배경에 어울리는 Soft Pink/Purple 계열 그래프
             fig = px.scatter(
                 df,
                 x="효율성 (Doench)",
                 y="안전성 (MIT)",
-                size="임상 종합 점수",
-                color="임상 종합 점수",
+                size="종합 점수",
+                color="종합 점수",
                 hover_name="후보명",
-                hover_data=["Sequence (20bp)", "GC 함량 (%)"],
                 text="후보명",
-                color_continuous_scale="Turbo",  # 다크 모드에서 매우 선명한 컬러풀 스케일
-                template="plotly_dark",
+                color_continuous_scale="PuRd", # Soft Pink/Purple 단색 스케일
                 range_x=[0, 105],
                 range_y=[0, 105]
             )
-            fig.update_traces(textposition='top center', marker=dict(sizeref=0.1, sizemode='area'))
+            fig.update_traces(textposition='top center')
             fig.update_layout(
-                height=500,
-                paper_bgcolor='#0E1117',
-                plot_bgcolor='#161B22'
+                height=460,
+                paper_bgcolor='#FFF0F5',
+                plot_bgcolor='#FFFFFF',
+                margin=dict(l=20, r=20, t=20, b=20)
             )
             st.plotly_chart(fig, use_container_width=True)
             
         with tab2:
-            st.subheader("상세 계산 결과")
             st.dataframe(df, use_container_width=True)
-            
             csv = df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button(
-                label="📥 스크리닝 결과 CSV 다운로드",
-                data=csv,
-                file_name="grna_screening_results.csv",
-                mime="text/csv",
-            )
+            st.download_button("📥 스크리닝 결과 CSV 다운로드", data=csv, file_name="screening_results.csv", mime="text/csv")
     else:
-        st.info("유효한 gRNA 서열이 없습니다. 올바른 20bp 서열을 입력해 주세요.")
+        st.warning("⚠️ 최소 요구 안전성 점수를 충족하는 후보가 없습니다. 필터 기준을 낮춰보세요.")
 else:
-    st.info("사이드바에 gRNA 후보 서열을 입력해 주거나 [🎲 다른 유전자 예시 데이터 불러오기] 버튼을 눌러주세요.")
+    st.info("👈 사이드바에서 gRNA 후보 서열을 입력해 주세요.")
