@@ -13,67 +13,81 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# 2. 테마 3: 차세대 바이오테크 (Modern Biotech Emerald) Custom CSS
+# 2. 테마 1: 딥 사이언스 & 다크 모드 (Deep Science Dark Mode) Custom CSS
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
-    /* 메인 배경 및 기본 폰트 색상 */
+    /* 메인 배경 및 기본 다크 톤 설정 */
     .stApp {
-        background-color: #F8FAFC;
+        background-color: #0E1117;
+        color: #E2E8F0;
     }
     
-    /* 헤더 및 타이틀 스타일 */
+    /* 헤더 및 타이틀 스타일 (네온 사이언 & 그린 Accent) */
     h1 {
-        color: #064E3B !important;
+        color: #00F2FE !important;
         font-weight: 700;
+        text-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
     }
     h2, h3 {
-        color: #047857 !important;
+        color: #38BDF8 !important;
     }
     
-    /* 사이드바 스타일링 */
+    /* 사이드바 스타일링 (다크 네이비) */
     [data-testid="stSidebar"] {
-        background-color: #ECFDF5 !important;
-        border-right: 1px solid #A7F3D0;
+        background-color: #161B22 !important;
+        border-right: 1px solid #30363D;
     }
     
-    /* 버튼 스타일링 */
+    /* 버튼 스타일링 (네온 버턴) */
     .stButton>button {
-        background-color: #10B981 !important;
+        background-color: #0284C7 !important;
         color: white !important;
         border-radius: 8px !important;
-        border: none !important;
+        border: 1px solid #38BDF8 !important;
         font-weight: 600 !important;
         transition: all 0.3s ease;
     }
     .stButton>button:hover {
-        background-color: #059669 !important;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        background-color: #0369A1 !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
     }
     
-    /* 슬라이더 색상 (에메랄드 톤) */
+    /* 슬라이더 트랙 색상 (포인트 컬러) */
     div[data-baseweb="slider"] div {
-        background-color: #10B981 !important;
+        background-color: #00F2FE !important;
     }
     
-    /* 탭 디자인 Custom */
+    /* 탭 디자인 Custom (다크 모드 스타일) */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
     .stTabs [data-baseweb="tab"] {
-        background-color: #E2E8F0;
+        background-color: #21262D;
         border-radius: 6px;
         padding: 8px 16px;
-        color: #334155;
+        color: #94A3B8;
+        border: 1px solid #30363D;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #10B981 !important;
+        background-color: #0284C7 !important;
         color: white !important;
+        border-color: #38BDF8 !important;
     }
     
-    /* 정보 안내 박스 커스텀 */
+    /* 텍스트 입력창 다크 스타일링 */
+    textarea {
+        background-color: #0D1117 !important;
+        color: #E2E8F0 !important;
+        border: 1px solid #30363D !important;
+    }
+    
+    /* 안내 박스 및 Alert 배경 */
     .stAlert {
         border-radius: 10px !important;
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border: 1px solid #334155 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -295,7 +309,7 @@ if user_input.strip():
             st.subheader("안전성 vs 효율성 2D 스크리닝 지도")
             st.caption("그래프의 **우상단(오른쪽 위)**에 위치할수록 안전성과 효율성을 모두 충족하는 최적의 gRNA입니다.")
             
-            # 에메랄드 테마에 맞춘 Plotly 컬러 스케일 적용 (Emerald / Mint 톤)
+            # 다크 모드 맞춤 Plotly 시각화 (plotly_dark 템플릿 & Turbo/Cyan 네온 팔레트)
             fig = px.scatter(
                 df,
                 x="효율성 (Doench)",
@@ -305,15 +319,16 @@ if user_input.strip():
                 hover_name="후보명",
                 hover_data=["Sequence (20bp)", "GC 함량 (%)"],
                 text="후보명",
-                color_continuous_scale="Emrld",  # Emerald 테마 색상 팔레트
+                color_continuous_scale="Turbo",  # 다크 모드에서 매우 선명한 컬러풀 스케일
+                template="plotly_dark",
                 range_x=[0, 105],
                 range_y=[0, 105]
             )
             fig.update_traces(textposition='top center', marker=dict(sizeref=0.1, sizemode='area'))
             fig.update_layout(
                 height=500,
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(240,253,244,0.5)'
+                paper_bgcolor='#0E1117',
+                plot_bgcolor='#161B22'
             )
             st.plotly_chart(fig, use_container_width=True)
             
