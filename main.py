@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import random
 import os
 import platform
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # PDF 생성을 위한 ReportLab 모듈
 from reportlab.lib.pagesizes import letter
@@ -230,9 +230,12 @@ def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cuto
     h2_style = ParagraphStyle('DocH2', parent=styles['Heading2'], fontName=font_name, fontSize=13, leading=16, textColor=colors.HexColor('#EC4899'), spaceBefore=12, spaceAfter=6)
     body_style = ParagraphStyle('DocBody', parent=styles['Normal'], fontName=font_name, fontSize=9, leading=13, textColor=colors.HexColor('#2D3748'))
     
+    # 한국 시간(UTC+9) 보정
+    now_kst = datetime.now() + timedelta(hours=9)
+    
     elements = []
     elements.append(Paragraph("🧬 gRNA Clinical Screening Summary Report", title_style))
-    elements.append(Paragraph(f"<b>생성 일시:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | <b>대상 유전자:</b> {gene_name}", body_style))
+    elements.append(Paragraph(f"<b>생성 일시:</b> {now_kst.strftime('%Y-%m-%d %H:%M:%S')} (KST) | <b>대상 유전자:</b> {gene_name}", body_style))
     elements.append(Spacer(1, 10))
     
     summary_data = [
@@ -448,20 +451,4 @@ if user_input.strip():
                     )
                     
                     with open(pdf_file_path, "rb") as pdf_file:
-                        pdf_bytes = pdf_file.read()
-                        
-                    st.session_state["pdf_bytes"] = pdf_bytes
-                    st.success("PDF 생성이 완료되었습니다!")
-
-        if "pdf_bytes" in st.session_state:
-            st.download_button(
-                label="📥 PDF 리포트 다운로드",
-                data=st.session_state["pdf_bytes"],
-                file_name=f"gRNA_Screening_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
-                mime="application/pdf"
-            )
-            
-    else:
-        st.warning("⚠️ 최소 요구 안전성 점수를 충족하는 후보가 없습니다. 필터 기준을 낮춰보세요.")
-else:
-    st.info("👈 사이드바에서 gRNA 후보 서열을 입력해 주세요.")
+                        pdf_
