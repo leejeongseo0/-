@@ -134,14 +134,15 @@ DATA_SAMPLES = {
 }
 
 # -----------------------------------------------------------------------------
-# 5. 계산 로직 (구문 에러 방지를 위해 단순화)
+# 5. 계산 로직
 # -----------------------------------------------------------------------------
 def validate_grna(sequence: str):
     seq = sequence.strip().upper()
     if len(seq) != 20:
         return False, f"길이 오류 ({len(seq)}bp)"
+    valid_bases = ['A', 'T', 'G', 'C']
     for char in seq:
-        if char not in ['A', 'T', 'G', 'C']:
+        if char not in valid_bases:
             return False, "유효하지 않은 염기 포함"
     return True, "정상"
 
@@ -161,7 +162,7 @@ def calculate_scores(sequence: str):
     }
 
 # -----------------------------------------------------------------------------
-# 6. PDF 생성용 헬퍼 함수
+# 6. PDF 생성용 헬퍼 함수 (에러 유발하는 따옴표/스타일 정의 단순화)
 # -----------------------------------------------------------------------------
 def register_korean_font():
     system_name = platform.system()
@@ -223,9 +224,131 @@ def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cuto
     doc = SimpleDocTemplate(
         pdf_filename,
         pagesize=letter,
-        rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
     )
     
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontName=font_name, fontSize=20, leading=24, textColor=colors.HexColor('#4A154B'), spaceAfter=10)
-    h2_style = ParagraphStyle('DocH2
+    
+    # 스타일 선언부 (오류 차단 구조)
+    title_style = ParagraphStyle(
+        name="DocTitle",
+        parent=styles["Heading1"],
+        fontName=font_name,
+        fontSize=20,
+        leading=24,
+        textColor=colors.HexColor("#4A154B"),
+        spaceAfter=10
+    )
+    
+    h2_style = ParagraphStyle(
+        name="DocH2",
+        parent=styles["Heading2"],
+        fontName=font_name,
+        fontSize=13,
+        leading=16,
+        textColor=colors.HexColor("#EC4899"),
+        spaceBefore=12,
+        spaceAfter=6
+    )
+    
+    body_style = ParagraphStyle(
+        name="DocBody",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor("#2D3748")
+    )
+    
+    now_kst = datetime.now() + timedelta(hours=9)
+    
+    elements = []
+    elements.append(Paragraph("🧬 gRNA Clinical Screening Summary Report", title_style))
+    elements.append(Paragraph(f"<b>생성 일시:</b> {now_kst.strftime('%Y-%m-%d %H:%M:%S')} (KST) | <b>대상 유전자:</b> {gene_name}", body_style))
+    elements.append(Spacer(1, 10))
+    
+    summary_data = [
+        [Paragraph("<b>구분</b>", body_style), Paragraph("<b>설정 및 결과 값</b>", body_style)],
+        [Paragraph("가중치 설정", body_style), Paragraph(f"안전성 (MIT) {mit_w}% : 효율성 (Doench) {doench_w}%", body_style)],
+        [Paragraph("최소 안전성 컷오프", body_style), Paragraph(f"{min_cutoff} 점", body_style)],
+        [Paragraph("스크리닝 통과 후보", body_style), Paragraph(f"총 {len(df_results)} 개", body_style)],
+        [Paragraph("<b>최우수 추천 후보 (TOP 1)</b>", body_style), Paragraph(f"<b>{top_cand['후보명']}</b> ({top_cand['Sequence']}) - <b>종합 {top_cand['종합 점수']}점</b>", body_style)]
+    ]
+    
+    t_summary = Table(summary_data, colWidths=[150, 390])
+    t_summary.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FCE7F3')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor('#DB2777')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FBCFE8')),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(t_summary)
+    
+    elements.append(Paragraph("📊 2D 스크리닝 분석 맵", h2_style))
+    elements.append(Image(img_filename, width=540, height=270))
+    elements.append(Spacer(1, 10))
+    
+    elements.append(Paragraph("📋 후보 리스트 (종합 점수 순)", h2_style))
+    
+    table_data = [[
+        Paragraph("<b>순위</b>", body_style),
+        Paragraph("<b>후보명</b>", body_style),
+        Paragraph("<b>Sequence (20bp)</b>", body_style),
+        Paragraph("<b>안전성</b>", body_style),
+        Paragraph("<b>효율성</b>", body_style),
+        Paragraph("<b>종합점수</b>", body_style)
+    ]]
+    
+    for idx, row in df_results.iterrows():
+        table_data.append([
+            Paragraph(str(idx + 1), body_style),
+            Paragraph(str(row['후보명']), body_style),
+            Paragraph(str(row['Sequence']), body_style),
+            Paragraph(str(row['안전성 (MIT)']), body_style),
+            Paragraph(str(row['효율성 (Doench)']), body_style),
+            Paragraph(f"<b>{row['종합 점수']}</b>", body_style)
+        ])
+        
+    t_results = Table(table_data, colWidths=[35, 120, 180, 65, 65, 75])
+    t_results.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#FFF0F5')),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#FBCFE8')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    elements.append(t_results)
+    doc.build(elements)
+    
+    if os.path.exists(img_filename):
+        os.remove(img_filename)
+        
+    return pdf_filename
+
+# -----------------------------------------------------------------------------
+# 7. 사이드바 - 설정 및 입력
+# -----------------------------------------------------------------------------
+st.sidebar.header("⚙ 스크리닝 설정")
+
+st.sidebar.subheader("1. ⚖️ 가중치 비율 설정")
+if "mit_w" not in st.session_state:
+    st.session_state["mit_w"] = 60
+if "doench_w" not in st.session_state:
+    st.session_state["doench_w"] = 40
+
+def on_mit_change():
+    st.session_state["doench_w"] = 100 - st.session_state["mit_w"]
+
+def on_doench_change():
+    st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
+
+mit_weight = st.sidebar.slider("🛡 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
+doench_
