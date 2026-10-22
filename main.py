@@ -162,7 +162,7 @@ def calculate_scores(sequence: str):
     }
 
 # -----------------------------------------------------------------------------
-# 6. PDF 생성용 헬퍼 함수 (에러 유발하는 따옴표/스타일 정의 단순화)
+# 6. PDF 생성용 헬퍼 함수
 # -----------------------------------------------------------------------------
 def register_korean_font():
     system_name = platform.system()
@@ -232,7 +232,6 @@ def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cuto
     
     styles = getSampleStyleSheet()
     
-    # 스타일 선언부 (오류 차단 구조)
     title_style = ParagraphStyle(
         name="DocTitle",
         parent=styles["Heading1"],
@@ -351,4 +350,153 @@ def on_doench_change():
     st.session_state["mit_w"] = 100 - st.session_state["doench_w"]
 
 mit_weight = st.sidebar.slider("🛡 안전성 (MIT) 가중치 (%)", 0, 100, key="mit_w", on_change=on_mit_change)
-doench_
+doench_weight = st.sidebar.slider("⚡ 효율성 (Doench) 가중치 (%)", 0, 100, key="doench_w", on_change=on_doench_change)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("2. 🎯 최소 품질 컷오프")
+min_mit_cutoff = st.sidebar.slider("최소 요구 안전성 점수", 0, 100, 50, step=5)
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("3. 📝 gRNA 서열 입력")
+
+if "grna_input_text_area" not in st.session_state:
+    st.session_state["grna_input_text_area"] = DATA_SAMPLES["HBB (겸상적혈구빈혈증 관련 유전자)"]
+    st.session_state["current_gene_name"] = "HBB (겸상적혈구빈혈증 관련 유전자)"
+
+def change_random_example_data():
+    gene_list = list(DATA_SAMPLES.keys())
+    available_genes = [g for g in gene_list if g != st.session_state.get("current_gene_name")]
+    selected_gene = random.choice(available_genes)
+    
+    st.session_state["grna_input_text_area"] = DATA_SAMPLES[selected_gene]
+    st.session_state["current_gene_name"] = selected_gene
+
+st.sidebar.button(
+    "🎲 다른 예시 데이터 불러오기", 
+    use_container_width=True,
+    on_click=change_random_example_data
+)
+
+if "current_gene_name" in st.session_state:
+    st.sidebar.caption(f"📌 현재 선택된 유전자: **{st.session_state['current_gene_name']}**")
+
+user_input = st.sidebar.text_area(
+    "후보 목록 (`후보명, 20bp_서열`)", 
+    height=150, 
+    key="grna_input_text_area"
+)
+
+# -----------------------------------------------------------------------------
+# 8. 메인 화면 구성
+# -----------------------------------------------------------------------------
+if user_input.strip():
+    lines = user_input.strip().split("\n")
+    parsed_results = []
+    
+    for idx, line in enumerate(lines, 1):
+        if not line.strip() or "," not in line:
+            continue
+        parts = line.split(",")
+        name, seq = parts[0].strip(), parts[1].strip().upper()
+        
+        is_valid, _ = validate_grna(seq)
+        if is_valid:
+            scores = calculate_scores(seq)
+            weighted = (scores["MIT_Score"] * (mit_weight / 100.0)) + (scores["Doench_Score"] * (doench_weight / 100.0))
+            
+            if scores["MIT_Score"] >= min_mit_cutoff:
+                parsed_results.append({
+                    "후보명": name,
+                    "Sequence": seq,
+                    "GC 함량 (%)": scores["GC_Ratio"],
+                    "안전성 (MIT)": scores["MIT_Score"],
+                    "효율성 (Doench)": scores["Doench_Score"],
+                    "종합 점수": round(weighted, 1)
+                })
+
+    if parsed_results:
+        df = pd.DataFrame(parsed_results).sort_values(by="종합 점수", ascending=False).reset_index(drop=True)
+        top = df.iloc[0]
+        
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("🔬 통과 후보", f"{len(df)}개")
+        m2.metric("🏆 최상위 후보", top["후보명"])
+        m3.metric("⭐ 최고 종합점수", f"{top['종합 점수']}점")
+        m4.metric("🛡️ 평균 안전성", f"{round(df['안전성 (MIT)'].mean(), 1)}점")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class="custom-card">
+            <span class="badge-best">🏆 TOP CANDIDATE</span>
+            <h3 style="margin: 6px 0 12px 0;">{top['후보명']} <span style="font-size:0.95rem; color:#64748B;">({top['Sequence']})</span></h3>
+            <p style="margin:0; font-size:1rem; color:#334155;">
+                <b>GC 함량:</b> {top['GC 함량 (%)']}% &nbsp;|&nbsp; 
+                <b>안전성 점수:</b> {top['안전성 (MIT)']}점 &nbsp;|&nbsp; 
+                <b>효율성 점수:</b> {top['효율성 (Doench)']}점 &nbsp;|&nbsp; 
+                <b>최종 종합 점수:</b> <span style="color:#EC4899; font-weight:800; font-size:1.1rem;">{top['종합 점수']}점</span>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tab1, tab2 = st.tabs(["📊 2D 스크리닝 맵", "📋 상세 결과 데이터"])
+        
+        fig = px.scatter(
+            df,
+            x="효율성 (Doench)",
+            y="안전성 (MIT)",
+            size="종합 점수",
+            color="종합 점수",
+            hover_name="후보명",
+            text="후보명",
+            color_continuous_scale="PuRd",
+            range_x=[0, 105],
+            range_y=[0, 105]
+        )
+        fig.update_traces(textposition='top center')
+        fig.update_layout(
+            height=460,
+            paper_bgcolor='#FFF0F5',
+            plot_bgcolor='#FFFFFF',
+            margin=dict(l=20, r=20, t=20, b=20)
+        )
+        
+        with tab1:
+            st.plotly_chart(fig, use_container_width=True)
+            
+        with tab2:
+            st.dataframe(df, use_container_width=True)
+            csv = df.to_csv(index=False).encode('utf-8-sig')
+            st.download_button("📥 스크리닝 결과 CSV 다운로드", data=csv, file_name="screening_results.csv", mime="text/csv")
+        
+        st.markdown("---")
+        st.subheader("📄 PDF 리포트 출력")
+        
+        col_pdf1, col_pdf2 = st.columns([2, 5])
+        with col_pdf1:
+            if st.button("📑 PDF 요약 리포트 생성", use_container_width=True):
+                with st.spinner("그래프 이미지 포함 PDF 리포트를 생성하는 중입니다..."):
+                    gene_label = st.session_state.get("current_gene_name", "직접 입력 서열")
+                    pdf_file_path = create_pdf_report(
+                        df, top, gene_label, mit_weight, doench_weight, min_mit_cutoff, fig
+                    )
+                    
+                    with open(pdf_file_path, "rb") as pdf_file:
+                        pdf_bytes = pdf_file.read()
+                        
+                    st.session_state["pdf_bytes"] = pdf_bytes
+                    st.success("PDF 생성이 완료되었습니다!")
+
+        if "pdf_bytes" in st.session_state:
+            now_kst = datetime.now() + timedelta(hours=9)
+            st.download_button(
+                label="📥 PDF 리포트 다운로드",
+                data=st.session_state["pdf_bytes"],
+                file_name=f"gRNA_Screening_Report_{now_kst.strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf"
+            )
+            
+    else:
+        st.warning("⚠️ 최소 요구 안전성 점수를 충족하는 후보가 없습니다. 필터 기준을 낮춰보세요.")
+else:
+    st.info("👈 사이드바에서 gRNA 후보 서열을 입력해 주세요.")
