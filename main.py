@@ -25,7 +25,7 @@ st.set_page_config(
 )
 
 # -----------------------------------------------------------------------------
-# 2. 연핑크 배경 & 입체감 있는 귀여운 폰트 Custom CSS
+# 2. 연핑크 배경 & Custom CSS
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
@@ -128,12 +128,15 @@ st.markdown("---")
 # 4. 예시 데이터 세트 정의
 # -----------------------------------------------------------------------------
 DATA_SAMPLES = {
-    "HBB (겸상적혈구빈혈증 관련 유전자)": (
-        "HBB_1460_rev, GACACCAACTGTCAACTGAT\n"
-        "HBB_1542_fw, CCTTGCCCCACAGGGCAGTA\n"
-        "HBB_Exon1_A, CTTGCCCCACAGGGCAGTAA\n"
-        "HBB_Exon1_B, TGGTCTACCCTTGGACCCAG\n"
-        "HBB_Exon2_C, AGTCTGCCATCACTGCCCTG"
-    ),
-    "BRCA1 (유방암/난소암 관련 유전자)": (
-        "BRCA1_Exon2_1, GAGTAGTCAAGAGAAAGGAC\n"
+    "HBB (겸상적혈구빈혈증 관련 유전자)": "HBB_1460_rev, GACACCAACTGTCAACTGAT\nHBB_1542_fw, CCTTGCCCCACAGGGCAGTA\nHBB_Exon1_A, CTTGCCCCACAGGGCAGTAA\nHBB_Exon1_B, TGGTCTACCCTTGGACCCAG\nHBB_Exon2_C, AGTCTGCCATCACTGCCCTG",
+    "BRCA1 (유방암/난소암 관련 유전자)": "BRCA1_Exon2_1, GAGTAGTCAAGAGAAAGGAC\nBRCA1_Exon11_A, GGAAGAAACCACCAAGGTCC\nBRCA1_Exon11_B, ACAGCTACCCTTCCATCATA\nBRCA1_Exon18_C, CTGATGTGCTTTGTTCTGGA\nBRCA1_Exon24_D, TTACAGTTAGGTGAACAGCA",
+    "TP53 (암 억제 유전자)": "TP53_Exon4_1, GTCCCCCTTGCCGTCCCAAG\nTP53_Exon5_A, CCTCAACAAGATGTTTTGCC\nTP53_Exon7_B, GCGCACTGACCACTGGATGG\nTP53_Exon8_C, CCTATCCTGAGTAGTGGTAA\nTP53_Exon10_D, CGTGTTTGTGCCTGTCCTGG"
+}
+
+# -----------------------------------------------------------------------------
+# 5. 계산 로직
+# -----------------------------------------------------------------------------
+def validate_grna(sequence: str) -> tuple[bool, str]:
+    seq = sequence.strip().upper()
+    if len(seq) != 20:
+        return False, f"길이 오류 ({len(seq)}bp)"
