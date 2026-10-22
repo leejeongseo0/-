@@ -134,10 +134,98 @@ DATA_SAMPLES = {
 }
 
 # -----------------------------------------------------------------------------
-# 5. 계산 로직
+# 5. 계산 로직 (구문 에러 방지를 위해 단순화)
 # -----------------------------------------------------------------------------
-def validate_grna(sequence: str) -> tuple[bool, str]:
+def validate_grna(sequence: str):
     seq = sequence.strip().upper()
     if len(seq) != 20:
         return False, f"길이 오류 ({len(seq)}bp)"
-    if not set(seq).issubset({'A', 'T', 'G', 'C'}
+    for char in seq:
+        if char not in ['A', 'T', 'G', 'C']:
+            return False, "유효하지 않은 염기 포함"
+    return True, "정상"
+
+def calculate_scores(sequence: str):
+    seq = sequence.strip().upper()
+    gc_content = ((seq.count('G') + seq.count('C')) / 20) * 100
+    doench_score = max(10, 100 - (abs(gc_content - 50) * 2.8))
+    
+    seed_region = seq[10:]
+    seed_gc = ((seed_region.count('G') + seed_region.count('C')) / 10) * 100
+    mit_score = max(15, 95 - abs(seed_gc - 50) * 1.5)
+    
+    return {
+        "GC_Ratio": round(gc_content, 1),
+        "Doench_Score": round(doench_score, 1),
+        "MIT_Score": round(mit_score, 1)
+    }
+
+# -----------------------------------------------------------------------------
+# 6. PDF 생성용 헬퍼 함수
+# -----------------------------------------------------------------------------
+def register_korean_font():
+    system_name = platform.system()
+    linux_font_paths = [
+        "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf"
+    ]
+    
+    if system_name == "Windows":
+        font_path = "C:/Windows/Fonts/malgun.ttf"
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont("KoreanFont", font_path))
+            return "KoreanFont"
+    elif system_name == "Darwin":
+        font_path = "/System/Library/Fonts/Supplemental/AppleGothic.ttf"
+        if os.path.exists(font_path):
+            pdfmetrics.registerFont(TTFont("KoreanFont", font_path))
+            return "KoreanFont"
+            
+    for path in linux_font_paths:
+        if os.path.exists(path):
+            pdfmetrics.registerFont(TTFont("KoreanFont", path))
+            return "KoreanFont"
+            
+    return "Helvetica"
+
+def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cutoff, fig_obj):
+    pdf_filename = "gRNA_Screening_Report.pdf"
+    img_filename = "temp_chart.png"
+    
+    fig_mat, ax = plt.subplots(figsize=(7, 3.5))
+    scatter = ax.scatter(
+        df_results["효율성 (Doench)"], 
+        df_results["안전성 (MIT)"], 
+        c=df_results["종합 점수"], 
+        cmap="PuRd", 
+        s=df_results["종합 점수"] * 2.5,
+        alpha=0.8,
+        edgecolors="#EC4899"
+    )
+    
+    for _, row in df_results.iterrows():
+        ax.annotate(row["후보명"], (row["효율성 (Doench)"], row["안전성 (MIT)"]),
+                    fontsize=8, ha='center', va='bottom', color='#4A154B', fontweight='bold')
+                    
+    ax.set_xlim(0, 105)
+    ax.set_ylim(0, 105)
+    ax.set_xlabel("Doench Score (Efficiency)", fontsize=9, color='#4A154B')
+    ax.set_ylabel("MIT Score (Safety)", fontsize=9, color='#4A154B')
+    ax.grid(True, linestyle="--", alpha=0.4)
+    plt.colorbar(scatter, ax=ax, label="Total Score")
+    plt.tight_layout()
+    plt.savefig(img_filename, dpi=200)
+    plt.close(fig_mat)
+    
+    font_name = register_korean_font()
+    
+    doc = SimpleDocTemplate(
+        pdf_filename,
+        pagesize=letter,
+        rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36
+    )
+    
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontName=font_name, fontSize=20, leading=24, textColor=colors.HexColor('#4A154B'), spaceAfter=10)
+    h2_style = ParagraphStyle('DocH2
