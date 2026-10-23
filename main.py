@@ -94,7 +94,7 @@ st.markdown("""
         border-radius: 14px !important;
         border: none !important;
         font-weight: 700 !important;
-        padding: 10px 20px !important;
+        padding: 12px 24px !important;
         box-shadow: 0 4px 10px rgba(236, 72, 153, 0.3);
         transition: all 0.2s ease;
     }
@@ -121,7 +121,6 @@ st.markdown("""
 # -----------------------------------------------------------------------------
 st.title("🧬 유전자 가위 임상 적합성 스크리닝 도구")
 st.markdown("✨ **안전성(MIT)**과 **효율성(Doench)**을 한눈에 비교하고 최적의 표적 후보를 선별해보세요!")
-
 st.markdown("---")
 
 # -----------------------------------------------------------------------------
@@ -224,43 +223,13 @@ def create_pdf_report(df_results, top_cand, gene_name, mit_w, doench_w, min_cuto
     doc = SimpleDocTemplate(
         pdf_filename,
         pagesize=letter,
-        rightMargin=36,
-        leftMargin=36,
-        topMargin=36,
-        bottomMargin=36
+        rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36
     )
     
     styles = getSampleStyleSheet()
-    
-    title_style = ParagraphStyle(
-        name="DocTitle",
-        parent=styles["Heading1"],
-        fontName=font_name,
-        fontSize=20,
-        leading=24,
-        textColor=colors.HexColor("#4A154B"),
-        spaceAfter=10
-    )
-    
-    h2_style = ParagraphStyle(
-        name="DocH2",
-        parent=styles["Heading2"],
-        fontName=font_name,
-        fontSize=13,
-        leading=16,
-        textColor=colors.HexColor("#EC4899"),
-        spaceBefore=12,
-        spaceAfter=6
-    )
-    
-    body_style = ParagraphStyle(
-        name="DocBody",
-        parent=styles["Normal"],
-        fontName=font_name,
-        fontSize=9,
-        leading=13,
-        textColor=colors.HexColor("#2D3748")
-    )
+    title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontName=font_name, fontSize=20, leading=24, textColor=colors.HexColor('#4A154B'), spaceAfter=10)
+    h2_style = ParagraphStyle('DocH2', parent=styles['Heading2'], fontName=font_name, fontSize=13, leading=16, textColor=colors.HexColor('#EC4899'), spaceBefore=12, spaceAfter=6)
+    body_style = ParagraphStyle('DocBody', parent=styles['Normal'], fontName=font_name, fontSize=9, leading=13, textColor=colors.HexColor('#2D3748'))
     
     now_kst = datetime.now() + timedelta(hours=9)
     
@@ -418,6 +387,10 @@ if user_input.strip():
         df = pd.DataFrame(parsed_results).sort_values(by="종합 점수", ascending=False).reset_index(drop=True)
         top = df.iloc[0]
         
+        # 데이터 세션 저장
+        st.session_state["selected_top_grna"] = top.to_dict()
+        st.session_state["all_candidates_df"] = df
+        
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("🔬 통과 후보", f"{len(df)}개")
         m2.metric("🏆 최상위 후보", top["후보명"])
@@ -438,6 +411,13 @@ if user_input.strip():
             </p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # ⭐️ 게임 시작 버튼 추가!
+        if st.button("🎮 이 gRNA 후보로 유전자 치료 게임 시작하기!", use_container_width=True):
+            st.session_state["selected_top_grna"] = top.to_dict()
+            st.success("데이터가 고정되었습니다! 왼쪽 사이드바의 'game' 페이지를 클릭하여 입장하세요.")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
         
         tab1, tab2 = st.tabs(["📊 2D 스크리닝 맵", "📋 상세 결과 데이터"])
         
