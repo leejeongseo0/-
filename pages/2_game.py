@@ -3,24 +3,24 @@ import streamlit.components.v1 as components
 
 # 1. 페이지 설정
 st.set_page_config(
-    page_title="CRISPR Drag & Drop Lab",
-    page_icon="🖐️",
+    page_title="CRISPR Bio Lab Game",
+    page_icon="🧬",
     layout="wide"
 )
 
-# 2. 스타일 설정
+# 2. 스타일 설정 (게임 감성 디자인)
 st.markdown("""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/NanumSquareRound.woff');
     * { font-family: 'NanumSquareRound', sans-serif !important; }
-    .stApp { background-color: #E6F4F9; color: #1E293B; }
-    h1 { color: #0F172A !important; font-weight: 800; }
+    .stApp { background-color: #0F172A; color: #F8FAFC; }
+    h1 { color: #38BDF8 !important; font-weight: 800; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 </style>
 """, unsafe_allow_html=True)
 
 # 3. 타이틀 및 데이터 수신
-st.title("🖐️ 인터랙티브 드래그 앤 드롭 유전자 가위 실습")
-st.markdown("🧬 1페이지에서 선별된 gRNA를 가지고, **마우스로 도구를 직접 드래그하여** 유전자 편집 과정을 직접 체험해봐요!")
+st.title("🎮 CRISPR 바이오 시뮬레이션 게임: 유전자 편집 실습")
+st.markdown("✨ 1페이지에서 선별된 gRNA 데이터를 바탕으로, **실제 게임 그래픽 환경에서 가이드 RNA와 Cas9 가위를 직접 조작**하여 유전자 치료 미션을 완수하세요!")
 st.markdown("---")
 
 top_cand = st.session_state.get("selected_top_grna", None)
@@ -35,154 +35,219 @@ else:
     doench_score = top_cand['효율성 (Doench)']
     
     st.markdown(f"""
-    <div style="background-color: #D1FAE5; border: 3px solid #059669; border-radius: 16px; padding: 15px; margin-bottom: 20px; text-align: center;">
-        <h3 style="margin: 0; color: #065F46;">🔬 실습 대상: {cand_name} ({seq})</h3>
-        <p style="margin: 5px 0 0 0; color: #047857; font-weight: bold;">안전성: {mit_score}점 | 효율성: {doench_score}점</p>
+    <div style="background: linear-gradient(135deg, #1E293B, #334155); border: 2px solid #38BDF8; border-radius: 20px; padding: 16px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 20px rgba(56, 189, 248, 0.15);">
+        <div>
+            <h3 style="margin: 0; color: #38BDF8; font-size: 1.2rem;">🔬 활성화된 미션 타겟: {cand_name}</h3>
+            <p style="margin: 4px 0 0 0; color: #94A3B8; font-family: monospace; font-size: 1.05rem;">Target Sequence: {seq}</p>
+        </div>
+        <div style="text-align: right;">
+            <span style="background: #0284C7; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 0.9rem;">MIT 안전성: {mit_score}점</span>
+            <span style="background: #0D9488; color: white; padding: 6px 14px; border-radius: 12px; font-weight: bold; font-size: 0.9rem; margin-left: 8px;">Doench 효율: {doench_score}점</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 파이썬 f-string 중괄호 에러 방지를 위한 HTML 분리 조합
-    html_part1 = """
+    # 구체적이고 화려한 게임 일러스트 드래그 앤 드롭 HTML/JS 엔진
+    game_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
     <meta charset="utf-8">
     <style>
-        body {
-            font-family: sans-serif;
-            background-color: #E6F4F9;
+        body {{
+            background-color: #0F172A;
+            color: #F8FAFC;
+            font-family: 'NanumSquareRound', sans-serif;
             margin: 0;
             padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
-        .bench {
-            background: #FFFFFF;
-            border: 4px dashed #3B82F6;
-            border-radius: 25px;
+        .game-container {{
             width: 100%;
-            max-width: 900px;
+            max-width: 950px;
+            background: #1E293B;
+            border: 3px solid #334155;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        .quest-box {{
+            background: #0F172A;
+            border-left: 6px solid #38BDF8;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: #E2E8F0;
+            margin-bottom: 20px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .lab-bench {{
+            background: #090D16;
+            border: 3px dashed #475569;
+            border-radius: 20px;
             height: 380px;
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+            overflow: hidden;
         }
-        .guide-box {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #1E3A8A;
-            margin-bottom: 20px;
-            background: #EFF6FF;
-            padding: 10px 20px;
-            border-radius: 15px;
-            border: 2px solid #BFDBFE;
-            text-align: center;
-        }
-        .dna-display {
-            background: #F8FAFC;
-            border: 3px solid #64748B;
+        /* 게임 일러스트 아이템 스타일 */
+        .game-item {{
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.15s ease, filter 0.15s ease;
+            z-index: 10;
+        }}
+        .game-item:active {{
+            cursor: grabbing;
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.8));
+        }}
+        #grna-item {{ top: 30px; left: 40px; }}
+        #cas9-item {{ top: 30px; right: 40px; display: none; }}
+        
+        .item-card {{
+            background: rgba(30, 41, 59, 0.95);
+            border: 2px solid #64748B;
             border-radius: 16px;
-            padding: 20px 30px;
-            font-family: monospace;
-            font-size: 1.3rem;
+            padding: 10px 16px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+        .item-card svg {{
+            width: 55px;
+            height: 55px;
+            margin-bottom: 4px;
+        }}
+        .item-name {{
+            font-size: 0.95rem;
             font-weight: bold;
-            color: #334155;
-            letter-spacing: 2px;
+            color: #38BDF8;
+        }}
+
+        /* DNA 이중나선 일러스트 박스 */
+        .dna-core {{
+            background: rgba(15, 23, 42, 0.9);
+            border: 3px solid #3B82F6;
+            border-radius: 16px;
+            padding: 20px 35px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
             z-index: 2;
         }
-        .tool {
-            width: 130px;
-            height: 65px;
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .dna-seq-text {{
+            font-family: monospace;
+            font-size: 1.35rem;
             font-weight: bold;
-            font-size: 1.1rem;
-            cursor: grab;
-            position: absolute;
-            z-index: 10;
-            user-select: none;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-        }
-        #grna {
-            top: 30px;
-            left: 30px;
-            background-color: #FB923C;
-            color: white;
-            border: 3px solid #EA580C;
-        }
-        #cas9 {
-            top: 30px;
-            right: 30px;
-            background-color: #64748B;
-            color: white;
-            border: 3px solid #475569;
-            display: none;
-        }
-        .success-text {
-            margin-top: 15px;
+            letter-spacing: 3px;
+            color: #93C5FD;
+            margin-top: 6px;
+        }}
+        .success-panel {{
+            margin-top: 20px;
+            background: #064E3B;
+            border: 2px solid #059669;
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
             font-size: 1.2rem;
             font-weight: bold;
-            color: #059669;
+            color: #6EE7B7;
             display: none;
+            box-shadow: 0 5px 15px rgba(5, 150, 105, 0.3);
         }
     </style>
     </head>
     <body>
 
-    <div class="guide-box" id="guide">🎯 1단계: 주황색 [🧬 gRNA]를 마우스로 잡아 중앙의 DNA 위에 올려놓으세요!</div>
+    <div class="game-container">
+        <div class="quest-box" id="quest-text">
+            🎯 [미션 1] 주황색 라인의 <span style="color:#FB923C;">[🧬 가이드 RNA (gRNA)]</span>를 마우스로 잡고 중앙의 DNA 타겟 위로 드래그하여 결합시키세요!
+        </div>
 
-    <div class="bench" ondragover="event.preventDefault()" ondrop="dropItem(event)">
-        <div class="tool" id="grna" draggable="true" ondragstart="event.dataTransfer.setData('text', 'grna')">🧬 gRNA</div>
-        <div class="tool" id="cas9" draggable="true" ondragstart="event.dataTransfer.setData('text', 'cas9')">✂️ Cas9 가위</div>
+        <div class="lab-bench" ondragover="event.preventDefault()" ondrop="dropToBench(event)">
+            
+            <!-- 1. gRNA 아이템 (SVG 일러스트 적용) -->
+            <div class="game-item" id="grna-item" draggable="true" ondragstart="event.dataTransfer.setData('text', 'grna')">
+                <div class="item-card" style="border-color: #FB923C;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 12h4l3-9 4 18 3-9h6"></path>
+                    </svg>
+                    <div class="item-name" style="color: #FB923C;">gRNA (가이드)</div>
+                </div>
+            </div>
 
-        <div class="dna-display" id="dna">
-            5'- """
+            <!-- 2. Cas9 가위 아이템 (초록색 단백질 + 회색 가위 일러스트) -->
+            <div class="game-item" id="cas9-item" draggable="true" ondragstart="event.dataTransfer.setData('text', 'cas9')">
+                <div class="item-card" style="border-color: #10B981;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle>
+                        <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+                        <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+                        <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+                    </svg>
+                    <div class="item-name" style="color: #10B981;">Cas9 가위</div>
+                </div>
+            </div>
 
-    html_part2 = """ -3'
+            <!-- 중앙 DNA 표적 지대 -->
+            <div class="dna-core" id="dna-zone">
+                <div style="font-size: 0.9rem; color: #60A5FA; font-weight: bold;">🧬 TARGET DNA DOUBLE STRAND</div>
+                <div class="dna-seq-text" id="dna-text">5'- {seq} -3'</div>
+            </div>
+
+        </div>
+
+        <div class="success-panel" id="success-box">
+            🎉 축하합니다! 주니어 수석 생명공학자 미션 클리어! 환자의 유전자가 완벽하게 교정되었습니다!
         </div>
     </div>
 
-    <div class="success-text" id="success">🎉 유전자 편집 실습 완료!</div>
-
     <script>
-        const targetSeq = '"""
+        const targetSeq = "{seq}";
 
-    html_part3 = """';
-
-        function dropItem(ev) {
+        function dropToBench(ev) {
             ev.preventDefault();
-            let data = ev.dataTransfer.getData("text");
-            let guide = document.getElementById("guide");
-            let dna = document.getElementById("dna");
-            let grna = document.getElementById("grna");
-            let cas9 = document.getElementById("cas9");
-            let success = document.getElementById("success");
+            let actionType = ev.dataTransfer.getData("text");
+            let questEl = document.getElementById("quest-text");
+            let dnaZone = document.getElementById("dna-zone");
+            let dnaText = document.getElementById("dna-text");
+            let grnaItem = document.getElementById("grna-item");
+            let cas9Item = document.getElementById("cas9-item");
+            let successBox = document.getElementById("success-box");
 
-            if (data === "grna" && grna.style.display !== "none") {
-                grna.style.display = "none";
-                dna.innerHTML = "5'- <span style='color:#EA580C;'>" + targetSeq + "</span> -3'<br><span style='font-size:0.9rem; color:#059669;'>✨ [gRNA 결합 성공!]</span>";
-                dna.style.borderColor = "#FB923C";
+            if (actionType === "grna" && grnaItem.style.display !== "none") {
+                // 1단계 완료: gRNA 결합
+                grnaItem.style.display = "none";
+                dnaZone.style.borderColor = "#F59E0B";
+                dnaText.innerHTML = "5'- <span style='color:#F59E0B;'>" + targetSeq + "</span> -3'<br><span style='font-size:0.85rem; color:#34D399;'>✨ [gRNA가 상보적 서열을 정확히 탐색 및 타겟팅 완료!]</span>";
                 
-                guide.innerHTML = "✂️ 2단계: 나타난 [회색 Cas9 가위]를 드래그해서 DNA 중앙으로 가져가세요!";
-                cas9.style.display = "flex";
+                questEl.innerHTML = "🎯 [미션 2] 타겟팅 완료! 이제 활성화된 초록색 <span style='color:#10B981;'>[✂️ Cas9 가위 복합체]</span>를 마우스로 잡아 중앙의 타겟 위에 드래그하여 절단(Cutting)을 실행하세요!";
+                cas9Item.style.display = "flex";
 
-            } else if (data === "cas9" && cas9.style.display !== "none") {
-                cas9.style.display = "none";
-                let half = Math.floor(targetSeq.length / 2);
-                let p1 = targetSeq.substring(0, half);
-                let p2 = targetSeq.substring(half);
-
-                dna.innerHTML = "5'- " + p1 + " <span style='color:red; font-size:1.6rem;'>⚡</span> " + p2 + " -3'<br><span style='font-size:0.9rem; color:red;'>✂️ [DNA 이중나선 절단 완료!]</span>";
-                dna.style.borderColor = "#DC2626";
+            } else if (actionType === "cas9" && cas9Item.style.display !== "none") {
+                // 2단계 완료: Cas9 절단
+                cas9Item.style.display = "none";
+                dnaZone.style.borderColor = "#EF4444";
                 
-                guide.innerHTML = "🏆 완벽합니다! 유전자 가위 실습 성공!";
-                success.style.display = "block";
+                let mid = Math.floor(targetSeq.length / 2);
+                let sub1 = targetSeq.substring(0, mid);
+                let sub2 = targetSeq.substring(mid);
+
+                dnaText.innerHTML = "5'- " + sub1 + " <span style='color:#EF4444; font-size:1.6rem;'>⚡✂️</span> " + sub2 + " -3'<br><span style='font-size:0.85rem; color:#F87171;'>⚡ [Double-Strand Break (DSB) 이중나선 절단 성공!]</span>";
+                
+                questEl.innerHTML = "🏆 모든 유전자 편집 임상 프로토콜 실습 과정이 성공적으로 끝났습니다!";
+                successBox.style.display = "block";
             }
         }
     </script>
@@ -190,5 +255,4 @@ else:
     </html>
     """
 
-    final_html = html_part1 + seq + html_part2 + seq + html_part3
-    components.html(final_html, height=520)
+    components.html(game_html, height=540)
