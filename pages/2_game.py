@@ -1,41 +1,23 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
-# -----------------------------------------------------------------------------
-# 1. 페이지 기본 설정
-# -----------------------------------------------------------------------------
+# 1. 페이지 설정
 st.set_page_config(
     page_title="CRISPR Drag & Drop Lab",
     page_icon="🖐️",
     layout="wide"
 )
 
-# -----------------------------------------------------------------------------
-# 2. Custom CSS (실습실 분위기 연출)
-# -----------------------------------------------------------------------------
+# 2. 스타일 설정
 st.markdown("""
 <style>
     @import url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_two@1.0/NanumSquareRound.woff');
-    
-    * {
-        font-family: 'NanumSquareRound', sans-serif !important;
-    }
-
-    .stApp {
-        background-color: #E6F4F9;
-        color: #1E293B;
-    }
-    
-    h1 {
-        color: #0F172A !important;
-        font-weight: 800;
-    }
+    * { font-family: 'NanumSquareRound', sans-serif !important; }
+    .stApp { background-color: #E6F4F9; color: #1E293B; }
+    h1 { color: #0F172A !important; font-weight: 800; }
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------------------------
 # 3. 타이틀 및 데이터 수신
-# -----------------------------------------------------------------------------
 st.title("🖐️ 인터랙티브 드래그 앤 드롭 유전자 가위 실습")
 st.markdown("🧬 1페이지에서 선별된 gRNA를 가지고, **마우스로 도구를 직접 드래그하여** 유전자 편집 과정을 직접 체험해봐요!")
 st.markdown("---")
@@ -55,16 +37,15 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    # -----------------------------------------------------------------------------
-    # HTML5 Drag and Drop 컴포넌트 삽입
-    # -----------------------------------------------------------------------------
-    drag_drop_html = f"""
+    # HTML 드래그 앤 드롭 컴포넌트 (문법 오류 방지형 안전 코드)
+    html_code = f"""
     <!DOCTYPE html>
     <html>
     <head>
+    <meta charset="utf-8">
     <style>
         body {{
-            font-family: 'NanumSquareRound', sans-serif;
+            font-family: sans-serif;
             background-color: #E6F4F9;
             margin: 0;
             padding: 10px;
@@ -72,7 +53,7 @@ else:
             flex-direction: column;
             align-items: center;
         }
-        .lab-bench {{
+        .bench {{
             background: #FFFFFF;
             border: 4px dashed #3B82F6;
             border-radius: 25px;
@@ -86,17 +67,18 @@ else:
             justify-content: center;
             box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
         }
-        .instruction {{
-            font-size: 1.25rem;
-            font-weight: 800;
+        .guide-box {{
+            font-size: 1.2rem;
+            font-weight: bold;
             color: #1E3A8A;
             margin-bottom: 20px;
             background: #EFF6FF;
             padding: 10px 20px;
             border-radius: 15px;
             border: 2px solid #BFDBFE;
-        }}
-        .dna-box {{
+            text-align: center;
+        }
+        .dna-display {{
             background: #F8FAFC;
             border: 3px solid #64748B;
             border-radius: 16px;
@@ -107,9 +89,8 @@ else:
             color: #334155;
             letter-spacing: 2px;
             z-index: 2;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }}
-        .draggable-tool {{
+        }
+        .tool {{
             width: 130px;
             height: 65px;
             border-radius: 16px;
@@ -123,31 +104,26 @@ else:
             z-index: 10;
             user-select: none;
             box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-            transition: transform 0.1s ease;
         }}
-        .draggable-tool:active {{
-            cursor: grabbing;
-            transform: scale(1.05);
-        }}
-        #grna-tool {{
-            top: 40px;
-            left: 40px;
+        #grna {{
+            top: 30px;
+            left: 30px;
             background-color: #FB923C;
             color: white;
             border: 3px solid #EA580C;
         }}
-        #cas9-tool {{
-            top: 40px;
-            right: 40px;
+        #cas9 {{
+            top: 30px;
+            right: 30px;
             background-color: #64748B;
             color: white;
             border: 3px solid #475569;
             display: none;
         }}
-        .success-banner {{
-            margin-top: 20px;
-            font-size: 1.3rem;
-            font-weight: 800;
+        .success-text {{
+            margin-top: 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
             color: #059669;
             display: none;
         }}
@@ -155,68 +131,55 @@ else:
     </head>
     <body>
 
-    <div class="instruction" id="instruction-text">🎯 1단계: 주황색 [🧬 gRNA] 박스를 마우스로 잡아 중앙의 DNA 위에 올려놓으세요!</div>
+    <div class="guide-box" id="guide">🎯 1단계: 주황색 [🧬 gRNA]를 마우스로 잡아 중앙의 DNA 위에 올려놓으세요!</div>
 
-    <div class="lab-bench" id="workbench" ondragover="allowDrop(event)" ondrop="drop(event)">
-        <!-- 드래그할 도구들 -->
-        <div class="draggable-tool" id="grna-tool" draggable="true" ondragstart="drag(event)">🧬 gRNA</div>
-        <div class="draggable-tool" id="cas9-tool" draggable="true" ondragstart="drag(event)">✂️ Cas9 가위</div>
+    <div class="bench" ondragover="event.preventDefault()" ondrop="dropItem(event)">
+        <div class="tool" id="grna" draggable="true" ondragstart="event.dataTransfer.setData('text', 'grna')">🧬 gRNA</div>
+        <div class="tool" id="cas9" draggable="true" ondragstart="event.dataTransfer.setData('text', 'cas9')">✂️ Cas9 가위</div>
 
-        <!-- 중앙 DNA 표적 -->
-        <div class="dna-box" id="dna-target">
+        <div class="dna-display" id="dna">
             5'- {seq} -3'
         </div>
     </div>
 
-    <div class="success-banner" id="success-msg">🎉 대성공! 유전자 가위 실습을 완벽하게 마쳤습니다!</div>
+    <div class="success-text" id="success">🎉 유전자 편집 실습 완료!</div>
 
     <script>
         const targetSeq = "{seq}";
 
-        function allowDrop(ev) {
+        function dropItem(ev) {
             ev.preventDefault();
-        }
+            let data = ev.dataTransfer.getData("text");
+            let guide = document.getElementById("guide");
+            let dna = document.getElementById("dna");
+            let grna = document.getElementById("grna");
+            let cas9 = document.getElementById("cas9");
+            let success = document.getElementById("success");
 
-        function drag(ev) {
-            ev.dataTransfer.setData("text", ev.target.id);
-        }
-
-        function drop(ev) {
-            ev.preventDefault();
-            var data = ev.dataTransfer.getData("text");
-            let instruction = document.getElementById("instruction-text");
-            let dnaBox = document.getElementById("dna-target");
-            let grnaTool = document.getElementById("grna-tool");
-            let cas9Tool = document.getElementById("cas9-tool");
-            let successMsg = document.getElementById("success-msg");
-
-            if (data === "grna-tool" && grnaTool.style.display !== "none") {
-                // gRNA 결합 완료
-                grnaTool.style.display = "none";
-                dnaBox.innerHTML = "5'- <span style='color:#EA580C;'>" + targetSeq + "</span> -3'<br><span style='font-size:0.95rem; color:#059669;'>✨ [gRNA 가이드 결합 성공!]</span>";
-                dnaBox.style.borderColor = "#FB923C";
+            if (data === "grna" && grna.style.display !== "none") {
+                grna.style.display = "none";
+                dna.innerHTML = "5'- <span style='color:#EA580C;'>" + targetSeq + "</span> -3'<br><span style='font-size:0.9rem; color:#059669;'>✨ [gRNA 결합 성공!]</span>";
+                dna.style.borderColor = "#FB923C";
                 
-                instruction.innerHTML = "✂️ 2단계 완료! 이제 나타난 [회색 Cas9 가위]를 드래그해서 DNA 중앙으로 가져가세요!";
-                cas9Tool.style.display = "flex";
+                guide.innerHTML = "✂️ 2단계: 나타난 [회색 Cas9 가위]를 드래그해서 DNA 중앙으로 가져가세요!";
+                cas9.style.display = "flex";
 
-            } else if (data === "cas9-tool" && cas9Tool.style.display !== "none") {
-                // Cas9 절단 완료
-                cas9Tool.style.display = "none";
+            } else if (data === "cas9" && cas9.style.display !== "none") {
+                cas9.style.display = "none";
                 let half = Math.floor(targetSeq.length / 2);
                 let p1 = targetSeq.substring(0, half);
                 let p2 = targetSeq.substring(half);
 
-                dnaBox.innerHTML = "5'- " + p1 + " <span style='color:red; font-size:1.8rem;'>⚡</span> " + p2 + " -3'<br><span style='font-size:0.95rem; color:red;'>✂️ [DNA 이중나선 절단(DSB) 완료!]</span>";
-                dnaBox.style.borderColor = "#DC2626";
+                dna.innerHTML = "5'- " + p1 + " <span style='color:red; font-size:1.6rem;'>⚡</span> " + p2 + " -3'<br><span style='font-size:0.9rem; color:red;'>✂️ [DNA 이중나선 절단 완료!]</span>";
+                dna.style.borderColor = "#DC2626";
                 
-                instruction.innerHTML = "🏆 유전자 편집 실습 완벽 성공!";
+                guide.innerHTML = "🏆 완벽합니다! 유전자 가위 실습 성공!";
                 success.style.display = "block";
             }
         }
     </script>
-
     </body>
     </html>
     """
 
-    components.html(drag_drop_html, height=520)
+    st.components.v1.html(html_code, height=520)
