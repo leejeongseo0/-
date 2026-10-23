@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
 # 1. 페이지 설정
 st.set_page_config(
@@ -29,22 +30,25 @@ if top_cand is None:
     st.info("👈 사이드바 메뉴에서 메인 스크리닝 페이지로 이동하실 수 있습니다.")
 else:
     seq = top_cand['Sequence']
+    cand_name = top_cand['후보명']
+    mit_score = top_cand['안전성 (MIT)']
+    doench_score = top_cand['효율성 (Doench)']
     
     st.markdown(f"""
     <div style="background-color: #D1FAE5; border: 3px solid #059669; border-radius: 16px; padding: 15px; margin-bottom: 20px; text-align: center;">
-        <h3 style="margin: 0; color: #065F46;">🔬 실습 대상: {top_cand['후보명']} ({seq})</h3>
-        <p style="margin: 5px 0 0 0; color: #047857; font-weight: bold;">안전성: {top_cand['안전성 (MIT)']}점 | 효율성: {top_cand['효율성 (Doench)']}점</p>
+        <h3 style="margin: 0; color: #065F46;">🔬 실습 대상: {cand_name} ({seq})</h3>
+        <p style="margin: 5px 0 0 0; color: #047857; font-weight: bold;">안전성: {mit_score}점 | 효율성: {doench_score}점</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # HTML 드래그 앤 드롭 컴포넌트 (문법 오류 방지형 안전 코드)
-    html_code = f"""
+    # 파이썬 f-string 중괄호 에러 방지를 위한 HTML 분리 조합
+    html_part1 = """
     <!DOCTYPE html>
     <html>
     <head>
     <meta charset="utf-8">
     <style>
-        body {{
+        body {
             font-family: sans-serif;
             background-color: #E6F4F9;
             margin: 0;
@@ -53,7 +57,7 @@ else:
             flex-direction: column;
             align-items: center;
         }
-        .bench {{
+        .bench {
             background: #FFFFFF;
             border: 4px dashed #3B82F6;
             border-radius: 25px;
@@ -67,7 +71,7 @@ else:
             justify-content: center;
             box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
         }
-        .guide-box {{
+        .guide-box {
             font-size: 1.2rem;
             font-weight: bold;
             color: #1E3A8A;
@@ -78,7 +82,7 @@ else:
             border: 2px solid #BFDBFE;
             text-align: center;
         }
-        .dna-display {{
+        .dna-display {
             background: #F8FAFC;
             border: 3px solid #64748B;
             border-radius: 16px;
@@ -90,7 +94,7 @@ else:
             letter-spacing: 2px;
             z-index: 2;
         }
-        .tool {{
+        .tool {
             width: 130px;
             height: 65px;
             border-radius: 16px;
@@ -104,29 +108,29 @@ else:
             z-index: 10;
             user-select: none;
             box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-        }}
-        #grna {{
+        }
+        #grna {
             top: 30px;
             left: 30px;
             background-color: #FB923C;
             color: white;
             border: 3px solid #EA580C;
-        }}
-        #cas9 {{
+        }
+        #cas9 {
             top: 30px;
             right: 30px;
             background-color: #64748B;
             color: white;
             border: 3px solid #475569;
             display: none;
-        }}
-        .success-text {{
+        }
+        .success-text {
             margin-top: 15px;
             font-size: 1.2rem;
             font-weight: bold;
             color: #059669;
             display: none;
-        }}
+        }
     </style>
     </head>
     <body>
@@ -138,14 +142,18 @@ else:
         <div class="tool" id="cas9" draggable="true" ondragstart="event.dataTransfer.setData('text', 'cas9')">✂️ Cas9 가위</div>
 
         <div class="dna-display" id="dna">
-            5'- {seq} -3'
+            5'- """
+
+    html_part2 = """ -3'
         </div>
     </div>
 
     <div class="success-text" id="success">🎉 유전자 편집 실습 완료!</div>
 
     <script>
-        const targetSeq = "{seq}";
+        const targetSeq = '"""
+
+    html_part3 = """';
 
         function dropItem(ev) {
             ev.preventDefault();
@@ -182,4 +190,5 @@ else:
     </html>
     """
 
-    st.components.v1.html(html_code, height=520)
+    final_html = html_part1 + seq + html_part2 + seq + html_part3
+    components.html(final_html, height=520)
