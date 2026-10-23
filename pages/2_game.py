@@ -1,17 +1,17 @@
 import streamlit as st
-import time
+import streamlit.components.v1 as components
 
 # -----------------------------------------------------------------------------
 # 1. 페이지 기본 설정
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="CRISPR 가위 실습실",
-    page_icon="✂️",
+    page_title="CRISPR Drag & Drop Lab",
+    page_icon="🖐️",
     layout="wide"
 )
 
 # -----------------------------------------------------------------------------
-# 2. Custom CSS (그림 속 일러스트 스타일 구현)
+# 2. Custom CSS (실습실 분위기 연출)
 # -----------------------------------------------------------------------------
 st.markdown("""
 <style>
@@ -22,68 +22,22 @@ st.markdown("""
     }
 
     .stApp {
-        background-color: #E6F4F9; /* 그림의 하늘색 배경 테마 */
+        background-color: #E6F4F9;
         color: #1E293B;
     }
     
-    h1, h2, h3 {
+    h1 {
         color: #0F172A !important;
         font-weight: 800;
-    }
-    
-    /* 일러스트 느낌의 실험실 박스 */
-    .lab-stage {
-        background-color: #D1FAE5; /* 그림의 연한 초록빛 단백질 느낌 */
-        border: 4px solid #059669;
-        border-radius: 35px;
-        padding: 30px;
-        text-align: center;
-        margin-bottom: 25px;
-        box-shadow: 0 10px 25px rgba(5, 150, 105, 0.2);
-    }
-    
-    .rna-tag {
-        background-color: #FB923C; /* 주황색 RNA 선 */
-        color: white;
-        padding: 6px 16px;
-        border-radius: 20px;
-        font-weight: bold;
-        display: inline-block;
-        margin-bottom: 15px;
-        font-size: 1.1rem;
-    }
-    
-    .dna-strand-box {
-        background-color: #FFFFFF;
-        border: 3px solid #3B82F6;
-        border-radius: 16px;
-        padding: 15px;
-        margin: 15px 0;
-        font-family: monospace;
-        font-size: 1.4rem;
-        font-weight: bold;
-        letter-spacing: 2px;
-        color: #1E3A8A;
-    }
-
-    .stButton>button {
-        background-color: #059669 !important;
-        color: #FFFFFF !important;
-        border-radius: 16px !important;
-        border: none !important;
-        font-weight: 800 !important;
-        padding: 14px 28px !important;
-        font-size: 1.2rem !important;
-        box-shadow: 0 6px 15px rgba(5, 150, 105, 0.3);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# 3. 타이틀 & 데이터 수신
+# 3. 타이틀 및 데이터 수신
 # -----------------------------------------------------------------------------
-st.title("✂️ CRISPR 유전자 가위 인터랙티브 실습실")
-st.markdown("🧬 1페이지에서 가져온 gRNA를 장착하고, **Cas9 단백질 가위로 목표 DNA를 직접 절단(Cutting)하는 실습**을 진행해봐요!")
+st.title("🖐️ 인터랙티브 드래그 앤 드롭 유전자 가위 실습")
+st.markdown("🧬 1페이지에서 선별된 gRNA를 가지고, **마우스로 도구를 직접 드래그하여** 유전자 편집 과정을 직접 체험해봐요!")
 st.markdown("---")
 
 top_cand = st.session_state.get("selected_top_grna", None)
@@ -94,69 +48,175 @@ if top_cand is None:
 else:
     seq = top_cand['Sequence']
     
-    # 세션 상태로 실습 단계 관리
-    if "lab_step" not in st.session_state:
-        st.session_state["lab_step"] = 1
-
-    # -----------------------------------------------------------------------------
-    # 실습 메인 스테이지 (그림 시각화 영역)
-    # -----------------------------------------------------------------------------
     st.markdown(f"""
-    <div class="lab-stage">
-        <div class="rna-tag">🧬 [RNA] gRNA: {top_cand['후보명']} ({seq[:10]}...)</div>
-        <h2 style="color: #065F46; margin: 5px 0;">🟢 PROTEIN (Cas9 가위 단백질 복합체)</h2>
-        <p style="color: #047857; font-weight: bold; font-size: 1.1rem;">
-            안전성 점수: {top_cand['안전성 (MIT)']}점 | 효율성 점수: {top_cand['효율성 (Doench)']}점
-        </p>
+    <div style="background-color: #D1FAE5; border: 3px solid #059669; border-radius: 16px; padding: 15px; margin-bottom: 20px; text-align: center;">
+        <h3 style="margin: 0; color: #065F46;">🔬 실습 대상: {top_cand['후보명']} ({seq})</h3>
+        <p style="margin: 5px 0 0 0; color: #047857; font-weight: bold;">안전성: {top_cand['안전성 (MIT)']}점 | 효율성: {top_cand['효율성 (Doench)']}점</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # 현재 DNA 상태 표현
-    st.subheader("🧪 타겟 DNA 이중나선 사슬")
-    
-    if st.session_state["lab_step"] == 1:
-        st.markdown(f"""
-        <div class="dna-strand-box" style="text-align: center;">
-            5'- {seq} -3' <br>
-            3'- {''.join([{'A':'T','T':'A','G':'C','C':'G'}.get(c,'N') for c in seq])} -5'
-        </div>
-        """, unsafe_allow_html=True)
-        st.info("👆 **1단계:** gRNA와 Cas9 단백질이 결합하여 대상 DNA 서열을 정확히 조준하고 있습니다. 아래 버튼을 눌러 가위를 작동시키세요!")
-        
-        if st.button("✂️ 2단계: Cas9 가위로 DNA 절단(Cutting) 실행!", use_container_width=True):
-            with st.spinner("gRNA가 서열을 인식하고 Cas9 가위가 작동하는 중..."):
-                time.sleep(0.8)
-            st.session_state["lab_step"] = 2
-            st.rerun()
+    # -----------------------------------------------------------------------------
+    # HTML5 Drag and Drop 컴포넌트 삽입
+    # -----------------------------------------------------------------------------
+    drag_drop_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <style>
+        body {{
+            font-family: 'NanumSquareRound', sans-serif;
+            background-color: #E6F4F9;
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .lab-bench {{
+            background: #FFFFFF;
+            border: 4px dashed #3B82F6;
+            border-radius: 25px;
+            width: 100%;
+            max-width: 900px;
+            height: 380px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+        }
+        .instruction {{
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #1E3A8A;
+            margin-bottom: 20px;
+            background: #EFF6FF;
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 2px solid #BFDBFE;
+        }}
+        .dna-box {{
+            background: #F8FAFC;
+            border: 3px solid #64748B;
+            border-radius: 16px;
+            padding: 20px 30px;
+            font-family: monospace;
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #334155;
+            letter-spacing: 2px;
+            z-index: 2;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }}
+        .draggable-tool {{
+            width: 130px;
+            height: 65px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: grab;
+            position: absolute;
+            z-index: 10;
+            user-select: none;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+            transition: transform 0.1s ease;
+        }}
+        .draggable-tool:active {{
+            cursor: grabbing;
+            transform: scale(1.05);
+        }}
+        #grna-tool {{
+            top: 40px;
+            left: 40px;
+            background-color: #FB923C;
+            color: white;
+            border: 3px solid #EA580C;
+        }}
+        #cas9-tool {{
+            top: 40px;
+            right: 40px;
+            background-color: #64748B;
+            color: white;
+            border: 3px solid #475569;
+            display: none;
+        }}
+        .success-banner {{
+            margin-top: 20px;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #059669;
+            display: none;
+        }}
+    </style>
+    </head>
+    <body>
 
-    elif st.session_state["lab_step"] == 2:
-        # 절단된 모습 표현 (중간이 끊어진 형태)
-        half_idx = len(seq) // 2
-        part1 = seq[:half_idx]
-        part2 = seq[half_idx:]
-        
-        comp_seq = ''.join([{'A':'T','T':'A','G':'C','C':'G'}.get(c,'N') for c in seq])
-        c_part1 = comp_seq[:half_idx]
-        c_part2 = comp_seq[half_idx:]
-        
-        st.markdown(f"""
-        <div class="dna-strand-box" style="text-align: center; color: #DC2626;">
-            5'- {part1} &nbsp;⚡&nbsp; {part2} -3' <br>
-            3'- {c_part1} &nbsp;⚡&nbsp; {c_part2} -5'
+    <div class="instruction" id="instruction-text">🎯 1단계: 주황색 [🧬 gRNA] 박스를 마우스로 잡아 중앙의 DNA 위에 올려놓으세요!</div>
+
+    <div class="lab-bench" id="workbench" ondragover="allowDrop(event)" ondrop="drop(event)">
+        <!-- 드래그할 도구들 -->
+        <div class="draggable-tool" id="grna-tool" draggable="true" ondragstart="drag(event)">🧬 gRNA</div>
+        <div class="draggable-tool" id="cas9-tool" draggable="true" ondragstart="drag(event)">✂️ Cas9 가위</div>
+
+        <!-- 중앙 DNA 표적 -->
+        <div class="dna-box" id="dna-target">
+            5'- {seq} -3'
         </div>
-        """, unsafe_allow_html=True)
-        
-        st.success("🎉 **찰칵!** Cas9 유전자 가위가 목표 DNA 이중나선을 완벽하게 절단(DSB)했습니다!")
-        st.balloons()
-        
-        st.markdown("---")
-        st.subheader("📊 실습 최종 평가 리포트")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("🎯 절단 성공 여부", "성공 (Success)")
-        col2.metric("🛡️ 세포 안전성", f"{top_cand['안전성 (MIT)']}점")
-        col3.metric("🏆 실습 등급", "A+ 수석 연구원")
-        
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔄 처음부터 실습 다시 하기", use_container_width=True):
-            st.session_state["lab_step"] = 1
-            st.rerun()
+    </div>
+
+    <div class="success-banner" id="success-msg">🎉 대성공! 유전자 가위 실습을 완벽하게 마쳤습니다!</div>
+
+    <script>
+        const targetSeq = "{seq}";
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            var data = ev.dataTransfer.getData("text");
+            let instruction = document.getElementById("instruction-text");
+            let dnaBox = document.getElementById("dna-target");
+            let grnaTool = document.getElementById("grna-tool");
+            let cas9Tool = document.getElementById("cas9-tool");
+            let successMsg = document.getElementById("success-msg");
+
+            if (data === "grna-tool" && grnaTool.style.display !== "none") {
+                // gRNA 결합 완료
+                grnaTool.style.display = "none";
+                dnaBox.innerHTML = "5'- <span style='color:#EA580C;'>" + targetSeq + "</span> -3'<br><span style='font-size:0.95rem; color:#059669;'>✨ [gRNA 가이드 결합 성공!]</span>";
+                dnaBox.style.borderColor = "#FB923C";
+                
+                instruction.innerHTML = "✂️ 2단계 완료! 이제 나타난 [회색 Cas9 가위]를 드래그해서 DNA 중앙으로 가져가세요!";
+                cas9Tool.style.display = "flex";
+
+            } else if (data === "cas9-tool" && cas9Tool.style.display !== "none") {
+                // Cas9 절단 완료
+                cas9Tool.style.display = "none";
+                let half = Math.floor(targetSeq.length / 2);
+                let p1 = targetSeq.substring(0, half);
+                let p2 = targetSeq.substring(half);
+
+                dnaBox.innerHTML = "5'- " + p1 + " <span style='color:red; font-size:1.8rem;'>⚡</span> " + p2 + " -3'<br><span style='font-size:0.95rem; color:red;'>✂️ [DNA 이중나선 절단(DSB) 완료!]</span>";
+                dnaBox.style.borderColor = "#DC2626";
+                
+                instruction.innerHTML = "🏆 유전자 편집 실습 완벽 성공!";
+                success.style.display = "block";
+            }
+        }
+    </script>
+
+    </body>
+    </html>
+    """
+
+    components.html(drag_drop_html, height=520)
