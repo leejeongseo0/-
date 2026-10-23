@@ -156,7 +156,7 @@ else:
             for idx, text in enumerate(steps_text):
                 status_box.markdown(f"⏳ **[임상 진행 중]** {text}")
                 progress_bar.progress((idx + 1) * 20)
-                time.sleep(0.5)
+                time.sleep(0.4)
                 
             status_box.success("✅ 유전자 치료 프로토콜 및 모니터링 완료!")
             
